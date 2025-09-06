@@ -3,46 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Million Pixel Website</title>
+<title>Million Pixel - View / Buy</title>
 <style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #111;
-  overflow-y: scroll; /* vertical scroll only */
-  overflow-x: hidden; /* no horizontal scroll */
-}
-
-/* Navbar */
+body { margin:0; font-family:Arial; background:#111; display:flex; overflow-x:hidden; }
 nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  background: #222;
-  display: flex;
-  align-items: center;
-  padding: 10px 20px;
-  z-index: 10;
+  position: fixed; top:0; left:0; width:100%; background:#222; display:flex; align-items:center; padding:10px 20px; z-index:10;
 }
-nav img { height: 30px; margin-right: 10px; }
-nav h1 { color: #0f0; font-size: 20px; margin-right: auto; }
-nav a { color: #fff; text-decoration: none; margin-left: 15px; font-size: 16px; }
-nav a:hover { color: #0f0; }
-
-/* Canvas container */
-#canvasContainer {
-  margin-top: 60px; /* leave space for navbar */
-  display: flex;
-  justify-content: center; /* center the grid */
-  padding: 10px;
+nav img { height:30px; margin-right:10px; }
+nav h1 { color:#0f0; font-size:20px; margin-right:auto; }
+nav a { color:#fff; text-decoration:none; margin-left:15px; font-size:16px; }
+nav a:hover { color:#0f0; }
+#container { display:flex; width:100%; margin-top:60px; }
+#canvasContainer { flex:1; display:flex; justify-content:center; overflow-y:scroll; padding:10px; }
+canvas { border:1px solid #222; }
+#sidebar {
+  width:300px; background:#1a1a1a; padding:15px; border-left:1px solid #222; overflow-y:auto; display:none; color:#fff;
 }
-canvas {
-  border: 1px solid #222;
-  display: block;
-  width: max-content; /* keep original size, do not shrink */
-  height: auto;
-}
+.pixelSection { display:flex; align-items:center; margin-bottom:10px; border:1px solid #222; padding:5px; border-radius:5px; }
+.pixelSection img { width:50px; height:50px; object-fit:cover; margin-right:10px; }
+.pixelSection span { flex:1; }
+.pixelSection input[type="url"], .pixelSection input[type="file"]{ display:block; margin-top:5px; width:100%; }
+.pixelSection:hover { background:#0033ff; cursor:pointer; }
+#totalCost { font-size:18px; margin-top:10px; font-weight:bold; }
+#checkout { margin-top:10px; padding:10px; font-size:16px; font-weight:bold; background:#0f0; border:none; color:#111; cursor:pointer; border-radius:5px; }
+#checkout:hover { background:#0c0; }
+#buyButton { position:fixed; top:70px; right:20px; padding:10px 15px; background:#0f0; color:#111; border:none; cursor:pointer; border-radius:5px; z-index:11; }
+#buyButton:hover { background:#0c0; }
 </style>
 </head>
 <body>
@@ -50,58 +36,130 @@ canvas {
 <nav>
   <img src="https://via.placeholder.com/30" alt="Logo">
   <h1>Million Pixel</h1>
-  <a href="buy.html">Buy Page</a>
   <a href="about.html">About Us</a>
 </nav>
 
-<div id="canvasContainer">
-  <canvas id="pixelCanvas"></canvas>
+<button id="buyButton">Buy Pixels</button>
+
+<div id="container">
+  <div id="canvasContainer">
+    <canvas id="pixelCanvas"></canvas>
+  </div>
+  <div id="sidebar">
+    <h2>Selected Pixels</h2>
+    <label><input type="checkbox" id="singleLink"> Use one hyperlink for all pixels</label>
+    <div id="pixelList"></div>
+    <div id="totalCost">Total Cost: 0 JOD</div>
+    <button id="checkout">Checkout</button>
+  </div>
 </div>
 
 <script>
 const canvas = document.getElementById('pixelCanvas');
 const ctx = canvas.getContext('2d');
+const sidebar = document.getElementById('sidebar');
+const pixelList = document.getElementById('pixelList');
+const totalCostEl = document.getElementById('totalCost');
+const singleLinkCheckbox = document.getElementById('singleLink');
+const buyButton = document.getElementById('buyButton');
 
-/* Grid settings */
-const cols = 100;  // For performance, can increase later
-const rows = 100;
-const pixelSize = 25; // fixed pixel size
+const cols=50, rows=50, pixelSize=25;
+canvas.width=cols*pixelSize; canvas.height=rows*pixelSize;
 
-canvas.width = cols * pixelSize;
-canvas.height = rows * pixelSize;
+let purchasedPixels = {"0,0":"https://example.com"}; // example purchased pixels
+let selectedPixels = [];
+let buyMode=false;
 
-/* Example purchased pixels */
-const purchasedPixels = {
-  "0,0": "https://example.com",
-  "2,3": "https://google.com",
-  "5,10": "https://github.com"
-};
-
-/* Draw pixels with tiny borders */
-function drawPixels() {
-  for(let y=0; y<rows; y++){
-    for(let x=0; x<cols; x++){
-      const key = `${y},${x}`;
-      ctx.fillStyle = purchasedPixels[key] ? "#0f0" : "#333";
-      ctx.fillRect(x*pixelSize, y*pixelSize, pixelSize, pixelSize);
-      ctx.strokeStyle = "#222";
-      ctx.lineWidth = 0.3;
-      ctx.strokeRect(x*pixelSize, y*pixelSize, pixelSize, pixelSize);
+function drawPixels(){
+  for(let y=0;y<rows;y++){
+    for(let x=0;x<cols;x++){
+      const key=`${y},${x}`;
+      if(purchasedPixels[key]) ctx.fillStyle="#0a0"; // purchased
+      else if(selectedPixels.find(p=>p.row==y && p.col==x)) ctx.fillStyle="#0f0"; // selected
+      else ctx.fillStyle="#333"; // available
+      ctx.fillRect(x*pixelSize,y*pixelSize,pixelSize,pixelSize);
+      ctx.strokeStyle="#222"; ctx.lineWidth=0.2; ctx.strokeRect(x*pixelSize,y*pixelSize,pixelSize,pixelSize);
     }
   }
 }
 drawPixels();
 
-/* Click handling */
-canvas.addEventListener("click", (e)=>{
+canvas.addEventListener("click", e=>{
   const rect = canvas.getBoundingClientRect();
-  const x = Math.floor((e.clientX - rect.left) / pixelSize);
-  const y = Math.floor((e.clientY - rect.top) / pixelSize);
+  const x = Math.floor((e.clientX-rect.left)/pixelSize);
+  const y = Math.floor((e.clientY-rect.top)/pixelSize);
   const key = `${y},${x}`;
-  if(purchasedPixels[key]){
-    window.open(purchasedPixels[key], "_blank");
+  
+  if(buyMode){
+    if(purchasedPixels[key]) return;
+    const idx = selectedPixels.findIndex(p=>p.row==y&&p.col==x);
+    if(idx>-1) selectedPixels.splice(idx,1);
+    else selectedPixels.push({row:y,col:x,image:null,link:""});
+    updateSidebar();
+  } else {
+    if(purchasedPixels[key]) window.open(purchasedPixels[key],'_blank');
   }
+  drawPixels();
 });
+
+function updateSidebar(){
+  if(selectedPixels.length>0) sidebar.style.display="block";
+  else sidebar.style.display="none";
+  pixelList.innerHTML="";
+  selectedPixels.forEach((p,i)=>{
+    const div = document.createElement('div');
+    div.className="pixelSection"; div.dataset.index=i;
+    div.innerHTML = `<img src="${p.image||'https://via.placeholder.com/50'}">
+                     <span>Row:${p.row} Col:${p.col}</span>
+                     <input type="file" class="imageInput" data-index="${i}" accept="image/*">
+                     <input type="url" class="linkInput" placeholder="Hyperlink" data-index="${i}">`;
+    div.addEventListener("mouseover",()=>drawHover(p.row,p.col));
+    div.addEventListener("mouseout",()=>drawPixels());
+    pixelList.appendChild(div);
+  });
+  totalCostEl.textContent=`Total Cost: ${selectedPixels.length} JOD`;
+}
+
+function drawHover(row,col){
+  drawPixels();
+  ctx.fillStyle="#00f"; ctx.fillRect(col*pixelSize,row*pixelSize,pixelSize,pixelSize);
+  ctx.strokeStyle="#222"; ctx.lineWidth=0.2; ctx.strokeRect(col*pixelSize,row*pixelSize,pixelSize,pixelSize);
+}
+
+// Handle file and link changes
+pixelList.addEventListener("change", e=>{
+  const idx = e.target.dataset.index;
+  if(e.target.classList.contains("imageInput")){
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload=function(event){ selectedPixels[idx].image=event.target.result; updateSidebar(); }
+    if(file) reader.readAsDataURL(file);
+  } else if(e.target.classList.contains("linkInput")) selectedPixels[idx].link=e.target.value;
+});
+
+// Single hyperlink option
+singleLinkCheckbox.addEventListener("change",()=>{
+  const inputs=document.querySelectorAll(".linkInput");
+  inputs.forEach(input=>input.style.display=singleLinkCheckbox.checked?"none":"block");
+});
+
+// Checkout
+document.getElementById("checkout").addEventListener("click",()=>{
+  if(singleLinkCheckbox.checked){
+    const link=prompt("Enter hyperlink for all pixels:");
+    selectedPixels.forEach(p=>p.link=link);
+  }
+  alert(`Purchasing ${selectedPixels.length} pixel(s) for ${selectedPixels.length} JOD`);
+  console.log(selectedPixels);
+});
+
+// Activate Buy Mode
+buyButton.addEventListener("click",()=>{
+  buyMode=!buyMode;
+  buyButton.textContent=buyMode?"Exit Buy Mode":"Buy Pixels";
+  if(!buyMode) { selectedPixels=[]; updateSidebar(); drawPixels(); }
+});
+
 </script>
 </body>
 </html>
