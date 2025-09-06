@@ -1,60 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Million Pixel Website</title>
-  <style>
-    body {
-      margin: 0;
-      background: #111;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      overflow: hidden;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(50, 1fr);
-      grid-template-rows: repeat(50, 1fr);
-      width: 100vmin;
-      height: 100vmin;
-    }
-    .pixel {
-      border: 0.5px solid #222;
-      background: #333;
-      transition: background 0.2s;
-    }
-    .pixel:hover {
-      background: #0f0;
-    }
-    @media (max-width: 600px) {
-      .grid {
-        grid-template-columns: repeat(30, 1fr);
-        grid-template-rows: repeat(30, 1fr);
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Million Pixel Canvas</title>
+<style>
+  body { margin:0; background:#111; display:flex; justify-content:center; align-items:center; height:100vh; }
+  canvas { border:1px solid #222; touch-action: none; }
+</style>
 </head>
 <body>
-  <div class="grid"></div>
+<canvas id="pixelCanvas"></canvas>
 
-  <script>
-    const grid = document.querySelector('.grid');
-    const totalPixels = 50 * 50; // 2500 pixels
+<script>
+const canvas = document.getElementById('pixelCanvas');
+const ctx = canvas.getContext('2d');
 
-    for (let i = 0; i < totalPixels; i++) {
-      const pixel = document.createElement('div');
-      pixel.classList.add('pixel');
+// Set canvas size (scale down for display)
+const displaySize = 800; // pixels on screen
+canvas.width = displaySize;
+canvas.height = displaySize;
 
-      // Example action
-      pixel.onclick = () => {
-        alert("Pixel " + (i+1) + " clicked!");
-      };
+const gridSize = 1000; // 1000 x 1000 "virtual" pixels
+const pixelSize = displaySize / gridSize;
 
-      grid.appendChild(pixel);
+// Store pixel data
+let pixels = new Array(gridSize*gridSize).fill('#333');
+
+// Draw function
+function draw() {
+  for(let y=0; y<gridSize; y++) {
+    for(let x=0; x<gridSize; x++) {
+      ctx.fillStyle = pixels[y*gridSize + x];
+      ctx.fillRect(x*pixelSize, y*pixelSize, pixelSize, pixelSize);
     }
-  </script>
+  }
+}
+draw();
+
+// Handle clicks
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left)/pixelSize);
+  const y = Math.floor((e.clientY - rect.top)/pixelSize);
+  const index = y*gridSize + x;
+
+  // Example: toggle color
+  pixels[index] = pixels[index] === '#333' ? '#0f0' : '#333';
+  draw();
+
+  alert(`Pixel ${index+1} clicked! (In future: link/image upload)`);
+});
+</script>
 </body>
 </html>
