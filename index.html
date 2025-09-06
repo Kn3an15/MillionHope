@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Million Pixel Website</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(50, 1fr);
+      grid-template-rows: repeat(50, 1fr);
+      width: 100vmin;
+      height: 100vmin;
+    }
+    .pixel {
+      border: 0.5px solid #222;
+      background: #333;
+      transition: background 0.2s;
+    }
+    .pixel:hover {
+      background: #0f0;
+    }
+    @media (max-width: 600px) {
+      .grid {
+        grid-template-columns: repeat(30, 1fr);
+        grid-template-rows: repeat(30, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid"></div>
+
+  <script>
+    const grid = document.querySelector('.grid');
+    const totalPixels = 50 * 50; // 2500 pixels
+
+    for (let i = 0; i < totalPixels; i++) {
+      const pixel = document.createElement('div');
+      pixel.classList.add('pixel');
+
+      // Example action
+      pixel.onclick = () => {
+        alert("Pixel " + (i+1) + " clicked!");
+      };
+
+      grid.appendChild(pixel);
+    }
+  </script>
+</body>
+</html>
