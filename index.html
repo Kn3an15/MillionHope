@@ -3,53 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Million Pixel Canvas</title>
+<title>Million Pixel Website</title>
 <style>
-  body { margin:0; background:#111; display:flex; justify-content:center; align-items:center; height:100vh; }
-  canvas { border:1px solid #222; touch-action: none; }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #111;
+  overflow-y: scroll; /* vertical scroll only */
+  overflow-x: hidden; /* no horizontal scroll */
+}
+
+/* Navbar */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: #222;
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  z-index: 10;
+}
+nav img { height: 30px; margin-right: 10px; }
+nav h1 { color: #0f0; font-size: 20px; margin-right: auto; }
+nav a { color: #fff; text-decoration: none; margin-left: 15px; font-size: 16px; }
+nav a:hover { color: #0f0; }
+
+/* Canvas container */
+#canvasContainer {
+  margin-top: 60px; /* leave space for navbar */
+  display: flex;
+  justify-content: center; /* center the grid */
+  padding: 10px;
+}
+canvas {
+  border: 1px solid #222;
+  display: block;
+  width: max-content; /* keep original size, do not shrink */
+  height: auto;
+}
 </style>
 </head>
 <body>
-<canvas id="pixelCanvas"></canvas>
+
+<nav>
+  <img src="https://via.placeholder.com/30" alt="Logo">
+  <h1>Million Pixel</h1>
+  <a href="buy.html">Buy Page</a>
+  <a href="about.html">About Us</a>
+</nav>
+
+<div id="canvasContainer">
+  <canvas id="pixelCanvas"></canvas>
+</div>
 
 <script>
 const canvas = document.getElementById('pixelCanvas');
 const ctx = canvas.getContext('2d');
 
-// Set canvas size (scale down for display)
-const displaySize = 800; // pixels on screen
-canvas.width = displaySize;
-canvas.height = displaySize;
+/* Grid settings */
+const cols = 100;  // For performance, can increase later
+const rows = 100;
+const pixelSize = 25; // fixed pixel size
 
-const gridSize = 1000; // 1000 x 1000 "virtual" pixels
-const pixelSize = displaySize / gridSize;
+canvas.width = cols * pixelSize;
+canvas.height = rows * pixelSize;
 
-// Store pixel data
-let pixels = new Array(gridSize*gridSize).fill('#333');
+/* Example purchased pixels */
+const purchasedPixels = {
+  "0,0": "https://example.com",
+  "2,3": "https://google.com",
+  "5,10": "https://github.com"
+};
 
-// Draw function
-function draw() {
-  for(let y=0; y<gridSize; y++) {
-    for(let x=0; x<gridSize; x++) {
-      ctx.fillStyle = pixels[y*gridSize + x];
+/* Draw pixels with tiny borders */
+function drawPixels() {
+  for(let y=0; y<rows; y++){
+    for(let x=0; x<cols; x++){
+      const key = `${y},${x}`;
+      ctx.fillStyle = purchasedPixels[key] ? "#0f0" : "#333";
       ctx.fillRect(x*pixelSize, y*pixelSize, pixelSize, pixelSize);
+      ctx.strokeStyle = "#222";
+      ctx.lineWidth = 0.3;
+      ctx.strokeRect(x*pixelSize, y*pixelSize, pixelSize, pixelSize);
     }
   }
 }
-draw();
+drawPixels();
 
-// Handle clicks
-canvas.addEventListener('click', e => {
+/* Click handling */
+canvas.addEventListener("click", (e)=>{
   const rect = canvas.getBoundingClientRect();
-  const x = Math.floor((e.clientX - rect.left)/pixelSize);
-  const y = Math.floor((e.clientY - rect.top)/pixelSize);
-  const index = y*gridSize + x;
-
-  // Example: toggle color
-  pixels[index] = pixels[index] === '#333' ? '#0f0' : '#333';
-  draw();
-
-  alert(`Pixel ${index+1} clicked! (In future: link/image upload)`);
+  const x = Math.floor((e.clientX - rect.left) / pixelSize);
+  const y = Math.floor((e.clientY - rect.top) / pixelSize);
+  const key = `${y},${x}`;
+  if(purchasedPixels[key]){
+    window.open(purchasedPixels[key], "_blank");
+  }
 });
 </script>
 </body>
