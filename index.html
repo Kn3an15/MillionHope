@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Million Pixel - Buy Mode</title>
+<title>Million Hope</title>
 <style>
 :root{
   --bg:#0f0f10;
@@ -17,7 +17,7 @@
 body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#eee;overflow:hidden;}
 #canvasContainer{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;}
 canvas{display:block;width:100%;height:100%;cursor:crosshair;background:#0b0b0b;}
-#sidebar{position:fixed;top:0;right:0;width:360px;height:100%;background:var(--panel);border-left:1px solid #222;display:none;flex-direction:column;padding:12px;overflow-y:auto;}
+#sidebar{position:fixed;top:0;right:0;width:360px;height:100%;background:var(--panel);border-left:1px solid #222;display:flex;flex-direction:column;padding:12px;overflow-y:auto;}
 #sidebar h2{margin:0 0 12px 0;color:var(--accent);}
 .pixelList{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
 .pixelItem{display:flex;gap:6px;align-items:center;border:1px solid #222;padding:6px;border-radius:6px;background:#111;position:relative;}
@@ -36,7 +36,7 @@ button{cursor:pointer;border:none;border-radius:6px;}
 </div>
 
 <div id="sidebar">
-  <h2>Buy Pixels</h2>
+  <h2>Buy Pixels - Million Hope</h2>
 
   <div class="checkboxContainer">
     <input type="checkbox" id="sliceImage"> Slice one image
@@ -123,8 +123,6 @@ canvas.addEventListener('click', e=>{
 
 // Sidebar handling
 const sidebar = document.getElementById('sidebar');
-function openSidebar(){ sidebar.style.display='flex'; }
-function closeSidebar(){ sidebar.style.display='none'; }
 
 // Checkboxes show input
 function setupCheckbox(id,inputId){
@@ -147,7 +145,6 @@ document.getElementById('clearSelection').addEventListener('click',()=>{
 
 // Update sidebar pixel list
 function updateSidebar(){
-  openSidebar();
   const pixelList = document.getElementById('pixelList');
   pixelList.innerHTML='';
   selectedPixels.forEach((p,i)=>{
@@ -197,8 +194,8 @@ function updateSidebar(){
   });
 }
 
-// For testing, open sidebar immediately
-openSidebar();
+// Open sidebar immediately
+sidebar.style.display='flex';
 </script>
 </body>
 </html>
