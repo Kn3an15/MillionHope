@@ -1,223 +1,390 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Million Pixel Grid</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Million Pixel — Grid</title>
 <style>
-  html, body {margin:0;padding:0;overflow:hidden;height:100%;background:#222;color:#fff;font-family:sans-serif;}
-  #container {display:flex;height:100%;width:100%;}
-  #canvasContainer {flex:1;position:relative;overflow:hidden;background:#111;}
-  canvas {background:#111;display:block;position:absolute;top:0;left:0;}
-  #sidebar {width:300px;background:#333;overflow-y:auto;padding:10px;box-sizing:border-box;}
-  #sidebar h2{margin-top:0;}
-  .pixelSection{border:1px solid #555;padding:5px;margin:5px 0;}
-  .pixelSection img{width:50px;height:50px;display:block;margin-bottom:5px;}
-  button{margin:2px;}
-  #controls{position:absolute;top:10px;left:10px;z-index:10;}
-  #sliceToggle.sliceActive{background:orange;color:#000;}
+:root{
+  --bg:#0f0f10;
+  --panel:#141416;
+  --accent:#0f0;
+  --muted:#7b7b7b;
+  --avail:#333;
+  --purchased:#0a8f3a;
+  --selected:#16c516;
+  --hover:#00a3ff;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:#eee;overflow:hidden}
+nav{position:fixed;left:0;right:0;top:0;height:56px;background:#151515;display:flex;align-items:center;padding:8px 12px;z-index:40}
+nav img{height:34px;margin-right:10px}
+nav h1{color:var(--accent);font-size:18px;margin:0 14px 0 0}
+nav .spacer{flex:1}
+button,input,select,textarea{font-family:inherit;font-size:14px}
+
+/* canvas area */
+#canvasContainer{position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg);overflow:hidden}
+canvas{display:block;width:100%;height:100%;background:transparent;cursor:crosshair}
+
+/* sidebar */
+#sidebar{position:fixed;top:56px;right:-360px;width:360px;bottom:0;background:var(--panel);border-left:1px solid #222;padding:12px;overflow-y:auto;transition:right .25s;z-index:45}
+#sidebar.open{right:0}
+#sidebar h2{margin:6px 0 10px 0}
+
+/* pixel item */
+.pixelSection{display:flex;gap:8px;align-items:flex-start;border:1px solid #222;padding:8px;border-radius:8px;margin-bottom:8px;background:#111;position:relative}
+.pixelSection img{width:56px;height:56px;object-fit:cover;border-radius:4px}
+.pixelMeta{flex:1;font-size:13px}
+.pixelMeta input{width:100%;margin-top:6px;padding:6px;border-radius:6px;border:1px solid #222;background:#0b0b0b;color:#fff}
+.removePixel{position:absolute;top:6px;right:6px;background:#cc3333;border:none;color:#fff;border-radius:50%;width:24px;height:24px;cursor:pointer}
+
+/* small controls */
+.controls{position:fixed;top:64px;right:380px;z-index:46;display:flex;flex-direction:column;gap:8px}
+.controlBtn{background:var(--accent);color:#0b0b0b;border:none;padding:10px 12px;border-radius:8px;cursor:pointer}
+.small{padding:8px 10px;font-size:13px}
+
+/* minimap */
+#minimapWrap{position:fixed;left:12px;bottom:12px;background:rgba(0,0,0,0.45);padding:8px;border-radius:8px;border:1px solid #222;z-index:46}
+#minimap{width:160px;height:160px;display:block;background:#0b0b0b;border-radius:4px}
+
+/* magnifier */
+#magnifier{position:fixed;pointer-events:none;z-index:50;border-radius:8px;overflow:hidden;border:2px solid rgba(255,255,255,0.08);display:none;background:#000}
+
+/* footer/help */
+.footer{position:fixed;left:12px;top:12px;background:rgba(0,0,0,0.35);padding:6px 10px;border-radius:6px;border:1px solid #222;font-size:13px;z-index:46}
 </style>
 </head>
 <body>
-<div id="container">
-  <div id="canvasContainer">
-    <canvas id="canvas"></canvas>
-    <div id="controls">
-      <button id="zoomIn">Zoom +</button>
-      <button id="zoomOut">Zoom -</button>
-      <button id="sliceToggle">Slice Tool</button>
-      <button id="applySameImage">Apply Image</button>
-      <button id="clearSelection">Clear</button>
-    </div>
-  </div>
-  <div id="sidebar">
-    <h2>Selected Pixels</h2>
-    <div id="pixelList"></div>
-    <div id="totalCost">Total Cost: 0 JOD</div>
-  </div>
+<nav>
+  <img src="https://via.placeholder.com/34" alt="logo">
+  <h1>Million Pixel</h1>
+  <div class="spacer"></div>
+</nav>
+
+<div id="canvasContainer">
+  <canvas id="pixelCanvas"></canvas>
 </div>
+
+<!-- sidebar -->
+<div id="sidebar" aria-hidden="true">
+  <h2>Selected Pixels</h2>
+  <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    <input type="checkbox" id="singleLink"> Use one hyperlink for all pixels
+  </label>
+  <div style="display:flex;gap:8px;margin-bottom:8px">
+    <button id="bulkApply" class="controlBtn">Bulk apply image/link</button>
+    <button id="boxSelectToggle" class="controlBtn">Box Select</button>
+  </div>
+  <div id="pixelList"></div>
+  <div id="totalCost" style="margin-top:8px;font-weight:700">Total Cost: 0 JOD</div>
+  <button id="checkout" style="margin-top:10px;padding:10px;border-radius:8px;border:none;background:var(--accent);color:#000;font-weight:700">Checkout</button>
+  <div style="margin-top:12px;color:var(--muted);font-size:13px">Tip: pinch to zoom, drag to pan, double-tap to zoom in.</div>
+</div>
+
+<!-- controls -->
+<div class="controls" id="controls">
+  <button id="buyButton" class="controlBtn">Buy Pixels</button>
+  <button id="clearSelection" class="controlBtn small">Clear Sel</button>
+</div>
+
+<!-- minimap -->
+<div id="minimapWrap">
+  <canvas id="minimap"></canvas>
+</div>
+
+<!-- magnifier -->
+<div id="magnifier" style="width:140px;height:140px"></div>
+
+<!-- footer/help -->
+<div class="footer">Mode: <span id="modeLabel">View</span></div>
+
 <script>
-const canvas=document.getElementById('canvas');
-const ctx=canvas.getContext('2d');
-const COLS=100, ROWS=100;
-const PRICE_PER_PIXEL=1;
-
-let purchasedPixels = {}; // pre-purchased pixels
+/* ============= Configuration ============= */
+const COLS = 1000, ROWS = 1000;
+let purchasedPixels = {};
 let selectedPixels = [];
+const PRICE_PER_PIXEL = 1;
 
-let scale = 10; // pixels per grid
-let offsetX=0, offsetY=0;
-let isDragging=false;
-let dragStart={x:0,y:0};
-let sliceMode=false;
-let sliceRect=null;
+/* ============= Canvas & viewport ============= */
+const container = document.getElementById('canvasContainer');
+const canvas = document.getElementById('pixelCanvas');
+const ctx = canvas.getContext('2d', {alpha:false});
+const dpi = Math.max(1, window.devicePixelRatio || 1);
+let scale = 1, minScale=1, maxScale=60;
+let offsetX = 0, offsetY = 0;
+let isDragging = false, dragStart = {x:0,y:0};
+let lastTouchDist = null, lastTouchMid = null;
+let hoveredCell = null;
+let buyMode = false;
 
-// --- Resize canvas ---
+/* ============= Resize & Draw ============= */
 function resize(){
-  canvas.width=canvas.parentElement.clientWidth;
-  canvas.height=canvas.parentElement.clientHeight;
-  draw();
+  const w = container.clientWidth, h = container.clientHeight;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.width = Math.floor(w*dpi);
+  canvas.height = Math.floor(h*dpi);
+  ctx.setTransform(dpi,0,0,dpi,0,0);
+  if(scale===1){
+    const fit = Math.min(w/COLS, h/ROWS);
+    scale = minScale = fit;
+    offsetX=(w-COLS*scale)/2;
+    offsetY=(h-ROWS*scale)/2;
+  }
+  constrainView(); draw(); drawMinimap();
 }
 window.addEventListener('resize', resize);
 
-// --- Draw ---
+function constrainView(){
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const worldW = COLS*scale, worldH = ROWS*scale;
+  if(worldW<=w) offsetX=(w-worldW)/2;
+  else offsetX=Math.min(0, Math.max(offsetX, w-worldW));
+  if(worldH<=h) offsetY=(h-worldH)/2;
+  else offsetY=Math.min(0, Math.max(offsetY, h-worldH));
+}
+
+function screenToWorld(cx,cy){
+  const rect=canvas.getBoundingClientRect();
+  return {x:(cx-rect.left-offsetX)/scale, y:(cy-rect.top-offsetY)/scale};
+}
+
+function worldToCell(x,y){
+  const col=Math.floor(x), row=Math.floor(y);
+  if(col<0||row<0||col>=COLS||row>=ROWS) return null;
+  return {row,col};
+}
+
+/* ============= Draw Canvas ============= */
 function draw(){
+  ctx.save();
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
+  ctx.restore();
   ctx.save();
-  // keep canvas centered
-  ctx.translate(canvas.width/2,canvas.height/2);
-  ctx.scale(scale,scale);
   ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
+  ctx.fillStyle='#0b0b0b';
+  ctx.fillRect(0,0,COLS,ROWS);
 
-  // background grid
-  ctx.fillStyle="#111";
-  ctx.fillRect(-COLS/2,-ROWS/2,COLS,ROWS);
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const x0 = Math.max(0, Math.floor((-offsetX)/scale));
+  const y0 = Math.max(0, Math.floor((-offsetY)/scale));
+  const x1 = Math.min(COLS, Math.ceil((w-offsetX)/scale));
+  const y1 = Math.min(ROWS, Math.ceil((h-offsetY)/scale));
 
-  // purchased pixels
-  ctx.fillStyle="green";
-  for(let key in purchasedPixels){
+  // Purchased pixels
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim()||'#0a8f3a';
+  for(const key in purchasedPixels){
     const [r,c]=key.split(',').map(Number);
-    ctx.fillRect(c-COLS/2, r-ROWS/2,1,1);
+    if(c>=x0 && c<x1 && r>=y0 && r<y1) ctx.fillRect(c,r,1,1);
   }
 
-  // selected pixels
-  ctx.fillStyle="rgba(0,200,0,0.5)";
-  selectedPixels.forEach(p=>{
-    ctx.fillRect(p.col-COLS/2,p.row-ROWS/2,1,1);
-    if(p.image){
-      const img=new Image();
-      img.src=p.image;
-      ctx.drawImage(img,p.col-COLS/2,p.row-ROWS/2,1,1);
+  // Selected pixels
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--selected').trim()||'#16c516';
+  for(let p of selectedPixels){
+    if(p.col>=x0 && p.col<x1 && p.row>=y0 && p.row<y1) ctx.fillRect(p.col,p.row,1,1);
+  }
+
+  // Hover
+  if(buyMode && hoveredCell){
+    const key=`${hoveredCell.row},${hoveredCell.col}`;
+    if(!purchasedPixels[key]){
+      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hover').trim()||'#00a3ff';
+      ctx.fillRect(hoveredCell.col, hoveredCell.row,1,1);
     }
-  });
+  }
+
+  // Grid lines if zoomed in
+  if(scale>=6){
+    ctx.strokeStyle='rgba(0,0,0,0.25)';
+    ctx.lineWidth=0.02;
+    ctx.beginPath();
+    for(let gx=x0; gx<=x1; gx++){ ctx.moveTo(gx,y0); ctx.lineTo(gx,y1); }
+    for(let gy=y0; gy<=y1; gy++){ ctx.moveTo(x0,gy); ctx.lineTo(x1,gy); }
+    ctx.stroke();
+  }
 
   ctx.restore();
-
-  // slice overlay
-  if(sliceRect){
-    ctx.save();
-    ctx.strokeStyle="orange";
-    ctx.lineWidth=2;
-    ctx.setLineDash([6,3]);
-    ctx.strokeRect(sliceRect.x, sliceRect.y, sliceRect.w, sliceRect.h);
-    ctx.restore();
-  }
+  drawMinimapViewport();
 }
 
-// --- Zoom centered ---
-function zoom(factor){
-  scale*=factor;
-  draw();
-}
-document.getElementById('zoomIn').onclick=()=>zoom(1.25);
-document.getElementById('zoomOut').onclick=()=>zoom(0.8);
+/* ============= Input / Selection ============= */
+const buyButton=document.getElementById('buyButton');
+const modeLabel=document.getElementById('modeLabel');
+buyButton.addEventListener('click', ()=>{
+  buyMode=!buyMode;
+  buyButton.textContent=buyMode?'Exit Buy Mode':'Buy Pixels';
+  document.getElementById('sidebar').classList.toggle('open', buyMode && selectedPixels.length>0);
+  modeLabel.innerText=buyMode?'Buy':'View';
+  if(!buyMode){ selectedPixels=[]; updateSidebar(); draw(); }
+});
 
-// --- Drag to pan ---
-canvas.addEventListener('mousedown', e=>{
-  if(sliceMode){
-    sliceRect={x:e.offsetX,y:e.offsetY,w:0,h:0};
-  }else{
-    isDragging=true;
-    dragStart={x:e.clientX, y:e.clientY};
+// Click select
+canvas.addEventListener('click',(e)=>{
+  if(isDragging || boxSelecting) return;
+  const {x,y}=screenToWorld(e.clientX,e.clientY);
+  const cell=worldToCell(x,y); if(!cell) return;
+  const key=`${cell.row},${cell.col}`;
+  if(buyMode){
+    if(purchasedPixels[key]) return;
+    const idx=selectedPixels.findIndex(p=>p.row===cell.row && p.col===cell.col);
+    if(idx>-1) selectedPixels.splice(idx,1);
+    else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:''});
+    updateSidebar(); draw();
+  } else {
+    if(purchasedPixels[key] && purchasedPixels[key].link) window.open(purchasedPixels[key].link,'_blank');
   }
 });
-canvas.addEventListener('mousemove', e=>{
-  if(sliceMode && sliceRect){
-    sliceRect.w=e.offsetX-sliceRect.x;
-    sliceRect.h=e.offsetY-sliceRect.y;
-    draw();
-  }
-  if(isDragging){
-    const dx=(e.clientX-dragStart.x)/scale;
-    const dy=(e.clientY-dragStart.y)/scale;
-    offsetX+=dx;
-    offsetY+=dy;
-    dragStart={x:e.clientX, y:e.clientY};
-    draw();
+
+// Hover highlight
+canvas.addEventListener('mousemove',(e)=>{
+  if(!buyMode || isDragging || boxSelecting) return;
+  const {x,y}=screenToWorld(e.clientX,e.clientY);
+  const cell=worldToCell(x,y);
+  if(!cell){ hoveredCell=null; draw(); return; }
+  if(!hoveredCell || hoveredCell.row!==cell.row || hoveredCell.col!==cell.col){
+    hoveredCell=cell; draw();
   }
 });
-canvas.addEventListener('mouseup', e=>{
-  if(sliceMode && sliceRect){
-    const rect=sliceRect;
-    const cx=(rect.x-canvas.width/2)/scale-offsetX;
-    const cy=(rect.y-canvas.height/2)/scale-offsetY;
-    const w=rect.w/scale;
-    const h=rect.h/scale;
-    for(let r=Math.floor(cy); r<Math.ceil(cy+h); r++){
-      for(let c=Math.floor(cx); c<Math.ceil(cx+w); c++){
-        if(!purchasedPixels[`${r},${c}`] && !selectedPixels.find(p=>p.row===r && p.col===c)){
-          selectedPixels.push({row:r,col:c,image:null,link:""});
-        }
-      }
+
+// Pan
+canvas.addEventListener('mousedown',(e)=>{
+  if(e.button!==0) return;
+  isDragging=true; dragStart.x=e.clientX-offsetX; dragStart.y=e.clientY-offsetY;
+});
+window.addEventListener('mousemove',(e)=>{
+  if(isDragging){ offsetX=e.clientX-dragStart.x; offsetY=e.clientY-dragStart.y; constrainView(); draw(); drawMinimap(); }
+});
+window.addEventListener('mouseup',()=>{ isDragging=false; });
+
+// Wheel zoom
+canvas.addEventListener('wheel',(e)=>{
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect();
+  const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+  const factor=Math.exp(-Math.sign(e.deltaY)*0.12);
+  zoomAt(factor,cx,cy);
+},{passive:false});
+
+// Touch pinch zoom
+canvas.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){
+    lastTouchDist=distBetweenTouches(e.touches[0],e.touches[1]);
+    lastTouchMid=midBetweenTouches(e.touches[0],e.touches[1]);
+  } else if(e.touches.length===1){
+    isDragging=true; dragStart.x=e.touches[0].clientX-offsetX; dragStart.y=e.touches[0].clientY-offsetY;
+  }
+},{passive:false});
+
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(e.touches.length===2){
+    const d=distBetweenTouches(e.touches[0],e.touches[1]);
+    const mid=midBetweenTouches(e.touches[0],e.touches[1]);
+    if(lastTouchDist){
+      const factor=d/lastTouchDist;
+      const rect=canvas.getBoundingClientRect();
+      zoomAt(factor, mid.x-rect.left, mid.y-rect.top);
     }
-    sliceRect=null;
-    updateSidebar();
-    draw();
+    lastTouchDist=d; lastTouchMid=mid;
+  } else if(e.touches.length===1 && isDragging){
+    offsetX=e.touches[0].clientX-dragStart.x;
+    offsetY=e.touches[0].clientY-dragStart.y;
+    constrainView(); draw(); drawMinimap();
   }
-  isDragging=false;
-});
+},{passive:false});
+window.addEventListener('touchend',()=>{ isDragging=false; lastTouchDist=null; });
 
-// --- Toggle slice ---
-const sliceBtn=document.getElementById('sliceToggle');
-sliceBtn.onclick=()=>{
-  sliceMode=!sliceMode;
-  sliceBtn.className=sliceMode?"sliceActive":"";
-};
-
-// --- Apply same image ---
-document.getElementById('applySameImage').onclick=()=>{
-  const input=document.createElement('input');
-  input.type='file'; input.accept='image/*';
-  input.onchange=e=>{
-    const file=e.target.files[0];
-    if(!file) return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      selectedPixels.forEach(p=>p.image=ev.target.result);
-      updateSidebar();
-      draw();
-    }
-    reader.readAsDataURL(file);
-  }
-  input.click();
+function distBetweenTouches(t1,t2){return Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);}
+function midBetweenTouches(t1,t2){return {x:(t1.clientX+t2.clientX)/2,y:(t1.clientY+t2.clientY)/2};}
+function zoomAt(factor,cx,cy){
+  const worldBefore=screenToWorld(cx,cy);
+  scale=Math.max(minScale,Math.min(maxScale,scale*factor));
+  const worldAfter=screenToWorld(cx,cy);
+  offsetX+=(worldAfter.x-worldBefore.x)*scale;
+  offsetY+=(worldAfter.y-worldBefore.y)*scale;
+  constrainView(); draw(); drawMinimap();
 }
 
-// --- Clear ---
-document.getElementById('clearSelection').onclick=()=>{
-  selectedPixels=[];
-  updateSidebar();
-  draw();
-}
-
-// --- Sidebar ---
+/* ============= Sidebar ============= */
+const pixelList=document.getElementById('pixelList');
 function updateSidebar(){
-  const list=document.getElementById('pixelList');
-  list.innerHTML='';
+  pixelList.innerHTML='';
   selectedPixels.forEach((p,i)=>{
-    const div=document.createElement('div');
-    div.className='pixelSection';
-    div.innerHTML=`<div>Row:${p.row} Col:${p.col}</div>
-      <input type="text" value="${p.link||''}" placeholder="URL" data-index="${i}" class="linkInput">
-      <button data-index="${i}">Remove</button>`;
-    if(p.image){
-      const img=document.createElement('img');
-      img.src=p.image;
-      div.insertBefore(img,div.firstChild);
-    }
-    list.appendChild(div);
+    const section=document.createElement('div');
+    section.className='pixelSection';
+    section.innerHTML=`
+      <img src="${p.image||'https://via.placeholder.com/56'}" alt="pixel">
+      <div class="pixelMeta">
+        <input type="file" accept="image/*" class="imageInput" data-index="${i}">
+        <input type="text" placeholder="Hyperlink" class="linkInput" data-index="${i}" value="${p.link||''}">
+      </div>
+      <button class="removePixel" data-index="${i}">×</button>
+    `;
+    pixelList.appendChild(section);
   });
-  list.querySelectorAll('button').forEach(btn=>{
-    btn.onclick=()=>{selectedPixels.splice(btn.dataset.index,1); updateSidebar(); draw();}
+
+  // Remove pixel
+  pixelList.querySelectorAll('.removePixel').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      const idx=parseInt(e.target.dataset.index);
+      selectedPixels.splice(idx,1); updateSidebar(); draw();
+    });
   });
-  list.querySelectorAll('.linkInput').forEach(inp=>{
-    inp.oninput=()=>{selectedPixels[inp.dataset.index].link=inp.value;}
+
+  // Image upload
+  pixelList.querySelectorAll('.imageInput').forEach(input=>{
+    input.addEventListener('change',e=>{
+      const idx=parseInt(e.target.dataset.index);
+      const file=e.target.files[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        selectedPixels[idx].image=ev.target.result;
+        updateSidebar(); draw();
+      };
+      reader.readAsDataURL(file);
+    });
   });
-  document.getElementById('totalCost').textContent=`Total Cost: ${selectedPixels.length*PRICE_PER_PIXEL} JOD`;
+
+  // Link change
+  pixelList.querySelectorAll('.linkInput').forEach(input=>{
+    input.addEventListener('input',e=>{
+      const idx=parseInt(e.target.dataset.index);
+      selectedPixels[idx].link=e.target.value.trim();
+    });
+  });
 }
 
-// --- Initialize ---
+/* ============= Minimap ============= */
+const minimap=document.getElementById('minimap');
+const mctx=minimap.getContext('2d');
+function drawMinimap(){
+  mctx.setTransform(1,0,0,1,0,0);
+  mctx.clearRect(0,0,minimap.width,minimap.height);
+  const w=minimap.width, h=minimap.height;
+  mctx.fillStyle='#0b0b0b';
+  mctx.fillRect(0,0,w,h);
+  // purchased
+  mctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim()||'#0a8f3a';
+  for(const key in purchasedPixels){
+    const [r,c]=key.split(',').map(Number);
+    mctx.fillRect(c/COLS*w, r/ROWS*h, w/COLS, h/ROWS);
+  }
+}
+function drawMinimapViewport(){
+  const w=minimap.width, h=minimap.height;
+  const vw=canvas.clientWidth/scale/COLS*w;
+  const vh=canvas.clientHeight/scale/ROWS*h;
+  const vx=-offsetX/scale/COLS*w;
+  const vy=-offsetY/scale/ROWS*h;
+  mctx.strokeStyle='rgba(255,255,255,0.5)';
+  mctx.lineWidth=2;
+  mctx.strokeRect(vx,vy,vw,vh);
+}
+
+/* ============= Init ============= */
 resize();
 </script>
 </body>
