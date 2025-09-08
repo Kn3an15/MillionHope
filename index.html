@@ -41,7 +41,7 @@
   #sidebar.open{ right:0; }
   @media (max-width:768px){
     #sidebar{
-      right:0; bottom:0; width:100%; height:200px; border-left:none; border-top:1px solid var(--grid);
+      right:0; bottom:0; width:100%; height:250px; border-left:none; border-top:1px solid var(--grid);
     }
   }
 
@@ -55,11 +55,11 @@
   .pixelSection:hover{ background:#0b2a60; cursor:pointer; }
 
   #totalCost{ font-weight:bold; margin-top:8px; }
-  #checkout{
+  #checkout, #clearSelection{
     margin-top:10px; padding:10px; width:100%;
     background:#0f0; color:#111; border:none; border-radius:6px; cursor:pointer; font-weight:700;
   }
-  #checkout:hover{background:#0c0}
+  #checkout:hover, #clearSelection:hover{background:#0c0}
 
   label.inline{ display:flex; align-items:center; gap:8px; margin:6px 0 8px; font-size:13px }
 
@@ -92,6 +92,7 @@
   <div id="pixelList"></div>
   <div id="totalCost">Total Cost: 0 JOD</div>
   <button id="checkout">Checkout</button>
+  <button id="clearSelection">Clear Selection</button>
 </div>
 
 <script>
@@ -106,6 +107,7 @@ const buyButton = document.getElementById('buyButton');
 const messageBar = document.getElementById('messageBar');
 const rectSelectToggle = document.getElementById('rectSelectToggle');
 const uploadImage = document.getElementById('uploadImage');
+const clearSelectionBtn = document.getElementById('clearSelection');
 
 const cols = 1000, rows = 1000;
 let purchasedPixels = { "0,0":"https://example.com" };
@@ -114,7 +116,6 @@ let hoveredCell = null;
 let buyMode = false;
 let purchaseDone = false;
 let scale = 1, offsetX = 0, offsetY = 0, isDragging = false, dragStartX = 0, dragStartY = 0;
-let minScale = 1, maxScale = 60;
 let rectStart = null;
 
 // Resize
@@ -128,7 +129,7 @@ function resizeCanvas(){
   canvas.style.height = h+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
   const fit=Math.min(w/cols,h/rows);
-  if(scale===1){ scale=fit; minScale=fit; offsetX=(w-cols*scale)/2; offsetY=(h-rows*scale)/2; }
+  if(scale===1){ scale=fit; offsetX=(w-cols*scale)/2; offsetY=(h-rows*scale)/2; }
   constrainView(); draw();
 }
 window.addEventListener('resize', resizeCanvas);
@@ -139,75 +140,86 @@ function worldToCell(x,y){ const col=Math.floor(x), row=Math.floor(y); if(col<0|
 
 // Draw
 function clearViewport(){ ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore(); }
+
 function draw(){
   clearViewport();
   ctx.save(); ctx.translate(offsetX,offsetY); ctx.scale(scale,scale);
   ctx.fillStyle='#1b1b1b'; ctx.fillRect(0,0,cols,rows);
 
-  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim()||'#0a0';
-  for(const key in purchasedPixels){ const [r,c]=key.split(',').map(Number); ctx.fillRect(c,r,1,1); }
+  // Purchased
+  for(const key in purchasedPixels){
+    const [r,c] = key.split(',').map(Number);
+    const img = purchasedPixels[key].img;
+    if(img){
+      ctx.drawImage(img, c, r, 1, 1);
+    } else {
+      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim()||'#0a0';
+      ctx.fillRect(c,r,1,1);
+    }
+  }
 
-  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--selected').trim()||'#00d600';
-  for(const p of selectedPixels){ ctx.fillRect(p.col,p.row,1,1); }
+  // Selected
+  for(const p of selectedPixels){
+    if(p.image){
+      const imgEl = new Image(); imgEl.src = p.image;
+      ctx.drawImage(imgEl, p.col, p.row, 1, 1);
+    } else {
+      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--selected').trim()||'#00d600';
+      ctx.fillRect(p.col,p.row,1,1);
+    }
+  }
 
-  if(buyMode && hoveredCell){ const key=`${hoveredCell.row},${hoveredCell.col}`; if(!purchasedPixels[key]){ ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hover').trim()||'#00a3ff'; ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1); } }
+  // Hover
+  if(buyMode && hoveredCell){
+    const key=`${hoveredCell.row},${hoveredCell.col}`;
+    if(!purchasedPixels[key]){
+      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hover').trim()||'#00a3ff';
+      ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1);
+    }
+  }
 
-  if(rectStart && rectSelectToggle.checked){ ctx.fillStyle='rgba(0,214,0,0.3)';
-    const endX=hoveredCell?hoveredCell.col:rectStart.x;
-    const endY=hoveredCell?hoveredCell.row:rectStart.y;
+  // Rectangle preview
+  if(rectStart && rectSelectToggle.checked){
+    ctx.fillStyle='rgba(0,214,0,0.3)';
+    const endX = hoveredCell ? hoveredCell.col : rectStart.x;
+    const endY = hoveredCell ? hoveredCell.row : rectStart.y;
     const rx=Math.min(rectStart.x,endX), ry=Math.min(rectStart.y,endY);
     const rw=Math.abs(endX-rectStart.x)+1, rh=Math.abs(endY-rectStart.y)+1;
     ctx.fillRect(rx,ry,rw,rh);
   }
-
   ctx.restore();
 }
 
 // Drag & Pan
-canvas.addEventListener('mousedown', e=>{ isDragging=true; dragStartX=e.clientX-offsetX; dragStartY=e.clientY-offsetY; });
-window.addEventListener('mousemove', e=>{ if(!isDragging) return; offsetX=e.clientX-dragStartX; offsetY=e.clientY-dragStartY; constrainView(); draw(); });
-window.addEventListener('mouseup', ()=>{ isDragging=false; });
-
-canvas.addEventListener('mousemove', e=>{
-  const {x,y}=screenToWorld(e.clientX,e.clientY);
-  const cell=worldToCell(x,y);
-  const changed=(cell&&(!hoveredCell||cell.row!==hoveredCell.row||cell.col!==hoveredCell.col))||(!cell&&hoveredCell);
-  hoveredCell=cell;
-  if(changed) draw();
+canvas.addEventListener('mousedown', e=>{
+  if(e.shiftKey){ // Shift + drag could be rectangle start
+    const {x,y}=screenToWorld(e.clientX,e.clientY);
+    const cell=worldToCell(x,y);
+    if(cell && rectSelectToggle.checked) rectStart={x:cell.col,y:cell.row};
+  } else { isDragging=true; dragStartX=e.clientX-offsetX; dragStartY=e.clientY-offsetY; }
 });
-
-canvas.addEventListener('mouseleave', ()=>{ hoveredCell=null; draw(); });
-
-canvas.addEventListener('click', e=>{
-  if(!buyMode) return;
-  const {x,y}=screenToWorld(e.clientX,e.clientY);
-  const cell=worldToCell(x,y);
-  if(!cell) return;
-  const key=`${cell.row},${cell.col}`;
-  if(purchasedPixels[key]) return;
-
-  if(rectSelectToggle.checked){
-    if(!rectStart){ rectStart={x:cell.col,y:cell.row}; return; }
-    const endX=cell.col, endY=cell.row;
-    const rx=Math.min(rectStart.x,endX), ry=Math.min(rectStart.y,endY);
-    const rw=Math.abs(endX-rectStart.x)+1, rh=Math.abs(endY-rectStart.y)+1;
-    for(let r=ry;r<ry+rh;r++) for(let c=rx;c<rx+rw;c++){
-      if(!selectedPixels.some(p=>p.row===r && p.col===c)) selectedPixels.push({row:r,col:c,image:null,link:""});
+window.addEventListener('mousemove', e=>{ if(!isDragging) return; offsetX=e.clientX-dragStartX; offsetY=e.clientY-dragStartY; constrainView(); draw(); });
+window.addEventListener('mouseup', e=>{
+  if(rectStart && rectSelectToggle.checked && buyMode){
+    const {x,y}=screenToWorld(e.clientX,e.clientY);
+    const cell=worldToCell(x,y);
+    if(cell){
+      const rx=Math.min(rectStart.x,cell.col), ry=Math.min(rectStart.y,cell.row);
+      const rw=Math.abs(cell.col-rectStart.x)+1, rh=Math.abs(cell.row-rectStart.y)+1;
+      for(let r=ry;r<ry+rh;r++) for(let c=rx;c<rx+rw;c++){
+        const key=`${r},${c}`; if(!purchasedPixels[key]) selectedPixels.push({row:r,col:c,image:null,link:""});
+      }
+      updateSidebar(); draw();
     }
     rectStart=null;
-  } else {
-    const idx=selectedPixels.findIndex(p=>p.row===cell.row&&p.col===cell.col);
-    if(idx>-1) selectedPixels.splice(idx,1); else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:""});
   }
-  updateSidebar(); draw();
+  isDragging=false;
 });
-
 canvas.addEventListener('wheel', e=>{
   e.preventDefault();
   const zoomFactor=Math.exp((e.deltaY<0?1:-1)*0.12);
   const prevScale=scale;
-  let next=prevScale*zoomFactor; next=Math.max(minScale,Math.min(maxScale,next));
-  if(next===prevScale) return;
+  let next=prevScale*zoomFactor; next=Math.max(0.001,Math.min(60,next));
   const rect=canvas.getBoundingClientRect();
   const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
   const worldX=(cx-offsetX)/prevScale, worldY=(cy-offsetY)/prevScale;
@@ -215,13 +227,25 @@ canvas.addEventListener('wheel', e=>{
   constrainView(); draw();
 },{passive:false});
 
-function constrainView(){
-  const w=canvas.clientWidth, h=canvas.clientHeight, worldW=cols*scale, worldH=rows*scale;
-  offsetX=worldW<=w?(w-worldW)/2:Math.min(0,Math.max(offsetX,w-worldW));
-  offsetY=worldH<=h?(h-worldH)/2:Math.min(0,Math.max(offsetY,h-worldH));
-}
+// Hover
+canvas.addEventListener('mousemove', e=>{
+  const {x,y}=screenToWorld(e.clientX,e.clientY); const cell=worldToCell(x,y);
+  hoveredCell=cell; draw();
+});
+canvas.addEventListener('mouseleave', ()=>{ hoveredCell=null; draw(); });
 
-// Sidebar
+// Click
+canvas.addEventListener('click', e=>{
+  if(!buyMode){
+    const {x,y}=screenToWorld(e.clientX,e.clientY); const cell=worldToCell(x,y);
+    if(cell){
+      const key=`${cell.row},${cell.col}`;
+      if(purchasedPixels[key] && purchasedPixels[key].link) window.open(purchasedPixels[key].link,'_blank');
+    }
+  }
+});
+
+// Sidebar updates
 function updateSidebar(){
   sidebar.classList.toggle('open', buyMode);
   messageBar.style.display=selectedPixels.length>0?'none':'block';
@@ -240,7 +264,10 @@ function updateSidebar(){
   });
   totalCostEl.textContent=`Total Cost: ${selectedPixels.length} JOD`;
 }
-singleLinkCheckbox.addEventListener('change', ()=>{ document.querySelectorAll('.linkInput').forEach(inp=>inp.style.display=singleLinkCheckbox.checked?'none':'block'); });
+
+singleLinkCheckbox.addEventListener('change', ()=>{
+  document.querySelectorAll('.linkInput').forEach(inp=>inp.style.display=singleLinkCheckbox.checked?'none':'block');
+});
 
 uploadImage.addEventListener('change', e=>{
   const file=e.target.files[0]; if(!file) return;
@@ -248,8 +275,12 @@ uploadImage.addEventListener('change', e=>{
   reader.onload=(ev)=>{
     selectedPixels.forEach(p=>p.image=ev.target.result);
     updateSidebar(); draw();
-  }
+  };
   reader.readAsDataURL(file);
+});
+
+clearSelectionBtn.addEventListener('click', ()=>{
+  selectedPixels=[]; updateSidebar(); draw();
 });
 
 // Checkout
@@ -259,27 +290,26 @@ document.getElementById('checkout').addEventListener('click', ()=>{
     const link=prompt('Enter hyperlink for ALL selected pixels:');
     if(link!==null) selectedPixels.forEach(p=>p.link=link.trim());
   }
-  // Mark as purchased
-  selectedPixels.forEach(p=>purchasedPixels[`${p.row},${p.col}`]=p.link||"#");
+  selectedPixels.forEach(p=>{
+    purchasedPixels[`${p.row},${p.col}`]={img:p.image,link:p.link};
+  });
   selectedPixels=[]; purchaseDone=true;
   messageBar.style.display='block'; messageBar.textContent='Purchase successful!';
   updateSidebar(); draw();
 });
 
+// Buy mode
 buyButton.addEventListener('click', ()=>{
   if(buyMode){
     if(!purchaseDone && selectedPixels.length>0){
-      if(!confirm('You have unsaved selections. Do you want to cancel them?')) return;
+      if(!confirm('You have unsaved selections. Cancel them?')) return;
       selectedPixels=[]; messageBar.textContent='Selections cancelled'; messageBar.style.display='block';
     }
-    buyMode=false; rectStart=null;
-    buyButton.textContent='Buy Pixels';
-    updateSidebar(); draw();
+    buyMode=false; rectStart=null; buyButton.textContent='Buy Pixels'; updateSidebar(); draw();
   } else {
     buyMode=true; purchaseDone=false;
     messageBar.textContent='Select pixels to start'; messageBar.style.display='block';
-    buyButton.textContent='Exit Buy Mode';
-    updateSidebar(); draw();
+    buyButton.textContent='Exit Buy Mode'; updateSidebar(); draw();
   }
 });
 
