@@ -112,7 +112,9 @@ let purchasedPixels = { "0,0":"https://example.com" };
 let selectedPixels = [];
 let hoveredCell = null;
 let buyMode = false;
-let scale = 1, offsetX = 0, offsetY = 0, isDragging = false, dragStartX = 0, dragStartY = 0, minScale = 1, maxScale = 60;
+let purchaseDone = false;
+let scale = 1, offsetX = 0, offsetY = 0, isDragging = false, dragStartX = 0, dragStartY = 0;
+let minScale = 1, maxScale = 60;
 let rectStart = null;
 
 // Resize
@@ -161,7 +163,7 @@ function draw(){
   ctx.restore();
 }
 
-// Interactions
+// Drag & Pan
 canvas.addEventListener('mousedown', e=>{ isDragging=true; dragStartX=e.clientX-offsetX; dragStartY=e.clientY-offsetY; });
 window.addEventListener('mousemove', e=>{ if(!isDragging) return; offsetX=e.clientX-dragStartX; offsetY=e.clientY-dragStartY; constrainView(); draw(); });
 window.addEventListener('mouseup', ()=>{ isDragging=false; });
@@ -197,8 +199,7 @@ canvas.addEventListener('click', e=>{
     const idx=selectedPixels.findIndex(p=>p.row===cell.row&&p.col===cell.col);
     if(idx>-1) selectedPixels.splice(idx,1); else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:""});
   }
-  updateSidebar();
-  draw();
+  updateSidebar(); draw();
 });
 
 canvas.addEventListener('wheel', e=>{
@@ -222,7 +223,7 @@ function constrainView(){
 
 // Sidebar
 function updateSidebar(){
-  sidebar.classList.toggle('open', buyMode && selectedPixels.length>0);
+  sidebar.classList.toggle('open', buyMode);
   messageBar.style.display=selectedPixels.length>0?'none':'block';
   pixelList.innerHTML='';
   selectedPixels.forEach((p,i)=>{
@@ -245,23 +246,41 @@ uploadImage.addEventListener('change', e=>{
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=(ev)=>{
-    if(rectSelectToggle.checked){
-      selectedPixels.forEach(p=>p.image=ev.target.result);
-    } else {
-      selectedPixels.forEach(p=>p.image=ev.target.result);
-    }
+    selectedPixels.forEach(p=>p.image=ev.target.result);
     updateSidebar(); draw();
   }
   reader.readAsDataURL(file);
 });
 
-document.getElementById('checkout').addEventListener('click', ()=>{ if(selectedPixels.length===0) return; if(singleLinkCheckbox.checked){ const link=prompt('Enter hyperlink for ALL selected pixels:'); if(link!==null) selectedPixels.forEach(p=>p.link=link.trim()); } alert(`Purchasing ${selectedPixels.length} pixel(s) for ${selectedPixels.length} JOD`); console.log('Selected payload:',selectedPixels); });
+// Checkout
+document.getElementById('checkout').addEventListener('click', ()=>{
+  if(selectedPixels.length===0) return;
+  if(singleLinkCheckbox.checked){
+    const link=prompt('Enter hyperlink for ALL selected pixels:');
+    if(link!==null) selectedPixels.forEach(p=>p.link=link.trim());
+  }
+  // Mark as purchased
+  selectedPixels.forEach(p=>purchasedPixels[`${p.row},${p.col}`]=p.link||"#");
+  selectedPixels=[]; purchaseDone=true;
+  messageBar.style.display='block'; messageBar.textContent='Purchase successful!';
+  updateSidebar(); draw();
+});
 
 buyButton.addEventListener('click', ()=>{
-  buyMode=!buyMode;
-  buyButton.textContent=buyMode?'Exit Buy Mode':'Buy Pixels';
-  updateSidebar();
-  draw();
+  if(buyMode){
+    if(!purchaseDone && selectedPixels.length>0){
+      if(!confirm('You have unsaved selections. Do you want to cancel them?')) return;
+      selectedPixels=[]; messageBar.textContent='Selections cancelled'; messageBar.style.display='block';
+    }
+    buyMode=false; rectStart=null;
+    buyButton.textContent='Buy Pixels';
+    updateSidebar(); draw();
+  } else {
+    buyMode=true; purchaseDone=false;
+    messageBar.textContent='Select pixels to start'; messageBar.style.display='block';
+    buyButton.textContent='Exit Buy Mode';
+    updateSidebar(); draw();
+  }
 });
 
 resizeCanvas();
