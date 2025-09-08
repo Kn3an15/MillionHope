@@ -5,67 +5,67 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Million Pixel - View / Buy</title>
 <style>
-  :root{
-    --bg:#111; --panel:#1a1a1a; --grid:#222;
-    --avail:#333; --purchased:#0a0; --selected:#00d600; --hover:#00a3ff;
-  }
-  *{box-sizing:border-box}
-  body { margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); overflow:hidden; }
+:root{
+  --bg:#111; --panel:#1a1a1a; --grid:#222;
+  --avail:#333; --purchased:#0a0; --selected:#00d600; --hover:#00a3ff;
+}
+*{box-sizing:border-box}
+body { margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); overflow:hidden; }
 
-  nav{
-    position:fixed; top:0; left:0; right:0; height:60px;
-    background:#222; display:flex; align-items:center; padding:10px 16px; z-index:10;
-  }
-  nav img{height:30px; margin-right:10px}
-  nav h1{color:#0f0; font-size:18px; margin:0 auto 0 0}
-  nav a{color:#fff; text-decoration:none; margin-left:16px}
-  nav a:hover{color:#0f0}
+nav{
+  position:fixed; top:0; left:0; right:0; height:60px;
+  background:#222; display:flex; align-items:center; padding:10px 16px; z-index:10;
+}
+nav img{height:30px; margin-right:10px}
+nav h1{color:#0f0; font-size:18px; margin:0 auto 0 0}
+nav a{color:#fff; text-decoration:none; margin-left:16px}
+nav a:hover{color:#0f0}
 
-  #canvasContainer{
-    position:absolute; top:60px; left:0; right:0; bottom:0;
-    overflow:hidden; background:var(--bg);
-  }
-  canvas{ display:block; width:100%; height:100%; background:var(--bg); touch-action: none; }
+#canvasContainer{
+  position:absolute; top:60px; left:0; right:0; bottom:0;
+  overflow:hidden; background:var(--bg);
+}
+canvas{ display:block; width:100%; height:100%; background:var(--bg); touch-action:none; }
 
-  #buyButton{
-    position:fixed; top:70px; right:20px;
-    padding:10px 14px; background:#0f0; color:#111; border:none; border-radius:6px; cursor:pointer; z-index:12;
-  }
-  #buyButton:hover{background:#0c0}
+#buyButton{
+  position:fixed; top:70px; right:20px;
+  padding:10px 14px; background:#0f0; color:#111; border:none; border-radius:6px; cursor:pointer; z-index:12;
+}
+#buyButton:hover{background:#0c0}
 
+#sidebar{
+  position:fixed; top:60px; right:-320px; width:320px; bottom:0;
+  background:var(--panel); color:#fff; border-left:1px solid var(--grid);
+  padding:14px; overflow-y:auto; z-index:11; transition:right .25s ease, bottom .25s ease, width .25s ease;
+}
+#sidebar.open{ right:0; }
+@media (max-width:768px){
   #sidebar{
-    position:fixed; top:60px; right:-320px; width:320px; bottom:0;
-    background:var(--panel); color:#fff; border-left:1px solid var(--grid);
-    padding:14px; overflow-y:auto; z-index:11; transition:right .25s ease, bottom .25s ease, width .25s ease;
+    right:0; bottom:0; width:100%; height:250px; border-left:none; border-top:1px solid var(--grid);
   }
-  #sidebar.open{ right:0; }
-  @media (max-width:768px){
-    #sidebar{
-      right:0; bottom:0; width:100%; height:250px; border-left:none; border-top:1px solid var(--grid);
-    }
-  }
+}
 
-  .pixelSection{
-    display:flex; gap:8px; align-items:flex-start;
-    border:1px solid var(--grid); border-radius:6px; padding:8px; margin-bottom:8px;
-  }
-  .pixelSection img{ width:50px; height:50px; object-fit:cover; border-radius:4px; }
-  .pixelMeta{ flex:1; font-size:13px; line-height:1.3; }
-  .pixelMeta input[type="url"], .pixelMeta input[type="file"]{ width:100%; margin-top:6px; }
-  .pixelSection:hover{ background:#0b2a60; cursor:pointer; }
+.pixelSection{
+  display:flex; gap:8px; align-items:flex-start;
+  border:1px solid var(--grid); border-radius:6px; padding:8px; margin-bottom:8px;
+}
+.pixelSection img{ width:50px; height:50px; object-fit:cover; border-radius:4px; }
+.pixelMeta{ flex:1; font-size:13px; line-height:1.3; }
+.pixelMeta input[type="url"], .pixelMeta input[type="file"]{ width:100%; margin-top:6px; }
+.pixelSection:hover{ background:#0b2a60; cursor:pointer; }
 
-  #totalCost{ font-weight:bold; margin-top:8px; }
-  #checkout, #clearSelection{
-    margin-top:10px; padding:10px; width:100%;
-    background:#0f0; color:#111; border:none; border-radius:6px; cursor:pointer; font-weight:700;
-  }
-  #checkout:hover, #clearSelection:hover{background:#0c0}
+#totalCost{ font-weight:bold; margin-top:8px; }
+#checkout, #clearSelection{
+  margin-top:10px; padding:10px; width:100%;
+  background:#0f0; color:#111; border:none; border-radius:6px; cursor:pointer; font-weight:700;
+}
+#checkout:hover, #clearSelection:hover{background:#0c0}
 
-  label.inline{ display:flex; align-items:center; gap:8px; margin:6px 0 8px; font-size:13px }
+label.inline{ display:flex; align-items:center; gap:8px; margin:6px 0 8px; font-size:13px }
 
-  #messageBar{
-    margin-bottom:10px; color:#0f0; font-weight:bold;
-  }
+#messageBar{
+  margin-bottom:10px; color:#0f0; font-weight:bold;
+}
 </style>
 </head>
 <body>
@@ -87,6 +87,7 @@
   <div id="messageBar">Press "Buy Pixels" and select pixels to start</div>
   <h2 style="margin:0 0 8px">Selected Pixels</h2>
   <label class="inline"><input type="checkbox" id="singleLink"> Use one hyperlink for all pixels</label>
+  <label class="inline"><input type="checkbox" id="applySameImage"> Apply same image to all selected</label>
   <label class="inline"><input type="checkbox" id="rectSelectToggle"> Rectangle Selection</label>
   <label class="inline">Upload image: <input type="file" id="uploadImage" accept="image/*"></label>
   <div id="pixelList"></div>
@@ -96,113 +97,114 @@
 </div>
 
 <script>
-const canvas = document.getElementById('pixelCanvas');
-const ctx = canvas.getContext('2d', { alpha:false });
-const container = document.getElementById('canvasContainer');
-const sidebar = document.getElementById('sidebar');
-const pixelList = document.getElementById('pixelList');
-const totalCostEl = document.getElementById('totalCost');
-const singleLinkCheckbox = document.getElementById('singleLink');
-const buyButton = document.getElementById('buyButton');
-const messageBar = document.getElementById('messageBar');
-const rectSelectToggle = document.getElementById('rectSelectToggle');
-const uploadImage = document.getElementById('uploadImage');
-const clearSelectionBtn = document.getElementById('clearSelection');
+const canvas=document.getElementById('pixelCanvas');
+const ctx=canvas.getContext('2d',{alpha:false});
+const container=document.getElementById('canvasContainer');
+const sidebar=document.getElementById('sidebar');
+const pixelList=document.getElementById('pixelList');
+const totalCostEl=document.getElementById('totalCost');
+const singleLinkCheckbox=document.getElementById('singleLink');
+const applySameImageCheckbox=document.getElementById('applySameImage');
+const buyButton=document.getElementById('buyButton');
+const messageBar=document.getElementById('messageBar');
+const rectSelectToggle=document.getElementById('rectSelectToggle');
+const uploadImage=document.getElementById('uploadImage');
+const clearSelectionBtn=document.getElementById('clearSelection');
 
-const cols = 1000, rows = 1000;
-let purchasedPixels = { "0,0":"https://example.com" };
-let selectedPixels = [];
-let hoveredCell = null;
-let buyMode = false;
-let purchaseDone = false;
-let scale = 1, offsetX = 0, offsetY = 0, isDragging = false, dragStartX = 0, dragStartY = 0;
-let rectStart = null;
+const cols=1000,rows=1000;
+let purchasedPixels={"0,0":{link:"https://example.com"}};
+let selectedPixels=[];
+let hoveredCell=null;
+let buyMode=false;
+let purchaseDone=false;
+let scale=1,offsetX=0,offsetY=0,isDragging=false,dragStartX=0,dragStartY=0;
+let rectStart=null;
 
 // Resize
 function resizeCanvas(){
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  const w = container.clientWidth;
-  const h = container.clientHeight;
-  canvas.width = Math.floor(w*dpr);
-  canvas.height = Math.floor(h*dpr);
-  canvas.style.width = w+'px';
-  canvas.style.height = h+'px';
+  const dpr=Math.max(1,window.devicePixelRatio||1);
+  const w=container.clientWidth,h=container.clientHeight;
+  canvas.width=Math.floor(w*dpr); canvas.height=Math.floor(h*dpr);
+  canvas.style.width=w+'px'; canvas.style.height=h+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
   const fit=Math.min(w/cols,h/rows);
   if(scale===1){ scale=fit; offsetX=(w-cols*scale)/2; offsetY=(h-rows*scale)/2; }
   constrainView(); draw();
 }
-window.addEventListener('resize', resizeCanvas);
+window.addEventListener('resize',resizeCanvas);
 
-// Coord
-function screenToWorld(x,y){ const rect=canvas.getBoundingClientRect(); return { x:(x-rect.left-offsetX)/scale, y:(y-rect.top-offsetY)/scale }; }
-function worldToCell(x,y){ const col=Math.floor(x), row=Math.floor(y); if(col<0||row<0||col>=cols||row>=rows) return null; return {row,col}; }
+function constrainView(){
+  const w=canvas.clientWidth,h=canvas.clientHeight;
+  const worldW=cols*scale,worldH=rows*scale;
+  if(worldW<=w) offsetX=(w-worldW)/2; else offsetX=Math.min(0,Math.max(offsetX,w-worldW));
+  if(worldH<=h) offsetY=(h-worldH)/2; else offsetY=Math.min(0,Math.max(offsetY,h-worldH));
+}
+
+function screenToWorld(x,y){
+  const rect=canvas.getBoundingClientRect();
+  return {x:(x-rect.left-offsetX)/scale,y:(y-rect.top-offsetY)/scale};
+}
+function worldToCell(x,y){
+  const col=Math.floor(x),row=Math.floor(y);
+  if(col<0||row<0||col>=cols||row>=rows) return null;
+  return {row,col};
+}
 
 // Draw
-function clearViewport(){ ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore(); }
-
+function clearViewport(){ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore();}
 function draw(){
   clearViewport();
   ctx.save(); ctx.translate(offsetX,offsetY); ctx.scale(scale,scale);
   ctx.fillStyle='#1b1b1b'; ctx.fillRect(0,0,cols,rows);
 
-  // Purchased
+  // Purchased pixels
   for(const key in purchasedPixels){
-    const [r,c] = key.split(',').map(Number);
-    const img = purchasedPixels[key].img;
-    if(img){
-      ctx.drawImage(img, c, r, 1, 1);
-    } else {
-      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim()||'#0a0';
-      ctx.fillRect(c,r,1,1);
-    }
+    const [r,c]=key.split(',').map(Number);
+    const data=purchasedPixels[key];
+    if(data.img){ const img=new Image(); img.src=data.img; ctx.drawImage(img,c,r,1,1);}
+    else{ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim()||'#0a0'; ctx.fillRect(c,r,1,1);}
   }
 
-  // Selected
+  // Selected pixels
   for(const p of selectedPixels){
-    if(p.image){
-      const imgEl = new Image(); imgEl.src = p.image;
-      ctx.drawImage(imgEl, p.col, p.row, 1, 1);
-    } else {
-      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--selected').trim()||'#00d600';
-      ctx.fillRect(p.col,p.row,1,1);
-    }
+    if(p.image){ const img=new Image(); img.src=p.image; ctx.drawImage(img,p.col,p.row,1,1);}
+    else{ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--selected').trim()||'#00d600'; ctx.fillRect(p.col,p.row,1,1);}
   }
 
   // Hover
   if(buyMode && hoveredCell){
     const key=`${hoveredCell.row},${hoveredCell.col}`;
-    if(!purchasedPixels[key]){
-      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hover').trim()||'#00a3ff';
-      ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1);
-    }
+    if(!purchasedPixels[key]){ ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hover').trim()||'#00a3ff'; ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1);}
   }
 
   // Rectangle preview
-  if(rectStart && rectSelectToggle.checked){
+  if(rectStart && rectSelectToggle.checked && hoveredCell){
     ctx.fillStyle='rgba(0,214,0,0.3)';
-    const endX = hoveredCell ? hoveredCell.col : rectStart.x;
-    const endY = hoveredCell ? hoveredCell.row : rectStart.y;
-    const rx=Math.min(rectStart.x,endX), ry=Math.min(rectStart.y,endY);
-    const rw=Math.abs(endX-rectStart.x)+1, rh=Math.abs(endY-rectStart.y)+1;
+    const rx=Math.min(rectStart.x,hoveredCell.col), ry=Math.min(rectStart.y,hoveredCell.row);
+    const rw=Math.abs(rectStart.x-hoveredCell.col)+1, rh=Math.abs(rectStart.y-hoveredCell.row)+1;
     ctx.fillRect(rx,ry,rw,rh);
   }
+
   ctx.restore();
 }
 
-// Drag & Pan
+// Drag & pan
 canvas.addEventListener('mousedown', e=>{
-  if(e.shiftKey){ // Shift + drag could be rectangle start
-    const {x,y}=screenToWorld(e.clientX,e.clientY);
-    const cell=worldToCell(x,y);
-    if(cell && rectSelectToggle.checked) rectStart={x:cell.col,y:cell.row};
-  } else { isDragging=true; dragStartX=e.clientX-offsetX; dragStartY=e.clientY-offsetY; }
+  const {x,y}=screenToWorld(e.clientX,e.clientY);
+  const cell=worldToCell(x,y);
+  if(rectSelectToggle.checked && buyMode && cell){ rectStart={x:cell.col,y:cell.row}; }
+  else{ isDragging=true; dragStartX=e.clientX-offsetX; dragStartY=e.clientY-offsetY; }
 });
-window.addEventListener('mousemove', e=>{ if(!isDragging) return; offsetX=e.clientX-dragStartX; offsetY=e.clientY-dragStartY; constrainView(); draw(); });
+window.addEventListener('mousemove', e=>{
+  const {x,y}=screenToWorld(e.clientX,e.clientY);
+  const cell=worldToCell(x,y);
+  if(rectStart && rectSelectToggle.checked && buyMode && cell){ hoveredCell=cell; draw(); return; }
+  if(!isDragging) return;
+  offsetX=e.clientX-dragStartX; offsetY=e.clientY-dragStartY; constrainView(); draw();
+});
 window.addEventListener('mouseup', e=>{
   if(rectStart && rectSelectToggle.checked && buyMode){
-    const {x,y}=screenToWorld(e.clientX,e.clientY);
-    const cell=worldToCell(x,y);
+    const {x,y}=screenToWorld(e.clientX,e.clientY); const cell=worldToCell(x,y);
     if(cell){
       const rx=Math.min(rectStart.x,cell.col), ry=Math.min(rectStart.y,cell.row);
       const rw=Math.abs(cell.col-rectStart.x)+1, rh=Math.abs(cell.row-rectStart.y)+1;
@@ -215,44 +217,44 @@ window.addEventListener('mouseup', e=>{
   }
   isDragging=false;
 });
+
+// Zoom
 canvas.addEventListener('wheel', e=>{
   e.preventDefault();
   const zoomFactor=Math.exp((e.deltaY<0?1:-1)*0.12);
   const prevScale=scale;
   let next=prevScale*zoomFactor; next=Math.max(0.001,Math.min(60,next));
   const rect=canvas.getBoundingClientRect();
-  const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
-  const worldX=(cx-offsetX)/prevScale, worldY=(cy-offsetY)/prevScale;
-  scale=next; offsetX=cx-worldX*scale; offsetY=cy-worldY*scale;
-  constrainView(); draw();
+  const cx=e.clientX-rect.left,cy=e.clientY-rect.top;
+  const worldX=(cx-offsetX)/prevScale,worldY=(cy-offsetY)/prevScale;
+  scale=next; offsetX=cx-worldX*scale; offsetY=cy-worldY*scale; constrainView(); draw();
 },{passive:false});
 
 // Hover
 canvas.addEventListener('mousemove', e=>{
-  const {x,y}=screenToWorld(e.clientX,e.clientY); const cell=worldToCell(x,y);
-  hoveredCell=cell; draw();
+  const {x,y}=screenToWorld(e.clientX,e.clientY); hoveredCell=worldToCell(x,y); draw();
 });
 canvas.addEventListener('mouseleave', ()=>{ hoveredCell=null; draw(); });
 
-// Click
+// Click to select/deselect
 canvas.addEventListener('click', e=>{
-  if(!buyMode){
-    const {x,y}=screenToWorld(e.clientX,e.clientY); const cell=worldToCell(x,y);
-    if(cell){
-      const key=`${cell.row},${cell.col}`;
-      if(purchasedPixels[key] && purchasedPixels[key].link) window.open(purchasedPixels[key].link,'_blank');
-    }
-  }
+  if(!buyMode) return;
+  const {x,y}=screenToWorld(e.clientX,e.clientY); const cell=worldToCell(x,y);
+  if(!cell) return;
+  const key=`${cell.row},${cell.col}`; if(purchasedPixels[key]) return;
+  const idx=selectedPixels.findIndex(p=>p.row===cell.row && p.col===cell.col);
+  if(idx>-1) selectedPixels.splice(idx,1);
+  else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:""});
+  updateSidebar(); draw();
 });
 
-// Sidebar updates
+// Sidebar
 function updateSidebar(){
   sidebar.classList.toggle('open', buyMode);
   messageBar.style.display=selectedPixels.length>0?'none':'block';
   pixelList.innerHTML='';
   selectedPixels.forEach((p,i)=>{
-    const div=document.createElement('div');
-    div.className='pixelSection'; div.dataset.index=i;
+    const div=document.createElement('div'); div.className='pixelSection'; div.dataset.index=i;
     div.innerHTML=`<img src="${p.image||'https://via.placeholder.com/50'}" alt="">
       <div class="pixelMeta">
         <div><strong>Row:</strong> ${p.row} &nbsp; <strong>Col:</strong> ${p.col}</div>
@@ -265,20 +267,28 @@ function updateSidebar(){
   totalCostEl.textContent=`Total Cost: ${selectedPixels.length} JOD`;
 }
 
+// Link toggle
 singleLinkCheckbox.addEventListener('change', ()=>{
   document.querySelectorAll('.linkInput').forEach(inp=>inp.style.display=singleLinkCheckbox.checked?'none':'block');
 });
 
+// Upload image
 uploadImage.addEventListener('change', e=>{
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=(ev)=>{
-    selectedPixels.forEach(p=>p.image=ev.target.result);
+    if(applySameImageCheckbox.checked){
+      selectedPixels.forEach(p=>p.image=ev.target.result);
+    } else {
+      // For individual selection, just first pixel if any
+      if(selectedPixels.length>0) selectedPixels[selectedPixels.length-1].image=ev.target.result;
+    }
     updateSidebar(); draw();
   };
   reader.readAsDataURL(file);
 });
 
+// Clear selection
 clearSelectionBtn.addEventListener('click', ()=>{
   selectedPixels=[]; updateSidebar(); draw();
 });
@@ -313,8 +323,7 @@ buyButton.addEventListener('click', ()=>{
   }
 });
 
-resizeCanvas();
-draw();
+resizeCanvas(); draw();
 </script>
 </body>
 </html>
