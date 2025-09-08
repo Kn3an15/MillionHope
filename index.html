@@ -39,17 +39,15 @@ canvas{display:block;width:100%;height:100%;cursor:crosshair;background:transpar
 }
 #sidebar.open{right:0;}
 #sidebar h2{margin:6px 0 10px 0;}
-.pixelSection{display:flex;gap:8px;align-items:flex-start;border:1px solid #222;padding:8px;border-radius:8px;margin-bottom:8px;background:#111;position:relative}
+.pixelSection{display:flex;gap:8px;align-items:flex-start;border:1px solid #222;padding:8px;border-radius:8px;margin-bottom:8px;background:#111;position:relative;cursor:pointer}
+.pixelSection.selected{background:var(--selected);}
+.pixelSection.hovered{background:var(--hover);}
 .pixelSection img{width:56px;height:56px;object-fit:cover;border-radius:4px}
 .pixelMeta{flex:1;font-size:13px}
 .pixelMeta input{width:100%;margin-top:6px;padding:6px;border-radius:6px;border:1px solid #222;background:#0b0b0b;color:#fff}
 .removePixel{position:absolute;top:6px;right:6px;background:#cc3333;border:none;color:#fff;border-radius:50%;width:24px;height:24px;cursor:pointer}
-.controls{position:fixed;top:64px;right:380px;z-index:46;display:flex;flex-direction:column;gap:8px}
-.controlBtn{background:var(--accent);color:#0b0b0b;border:none;padding:10px 12px;border-radius:8px;cursor:pointer}
+.controlBtn{background:var(--accent);color:#0b0b0b;border:none;padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:8px;font-weight:700}
 .small{padding:8px 10px;font-size:13px}
-#minimapWrap{position:fixed;left:12px;bottom:12px;background:rgba(0,0,0,0.45);padding:8px;border-radius:8px;border:1px solid #222;z-index:46}
-#minimap{width:160px;height:160px;display:block;background:#0b0b0b;border-radius:4px}
-.footer{position:fixed;left:12px;top:12px;background:rgba(0,0,0,0.35);padding:6px 10px;border-radius:6px;border:1px solid #222;font-size:13px;z-index:46}
 </style>
 </head>
 <body>
@@ -79,25 +77,15 @@ canvas{display:block;width:100%;height:100%;cursor:crosshair;background:transpar
     <button id="bulkApply" class="controlBtn">Bulk apply image/link</button>
     <button id="sliceSelectToggle" class="controlBtn">Rectangle Select</button>
   </div>
+  <button id="clearSelection" class="controlBtn small">Clear Selection</button>
   <div id="pixelList"></div>
   <div id="totalCost" style="margin-top:8px;font-weight:700">Total Cost: 0 JOD</div>
   <button id="checkout" style="margin-top:10px;padding:10px;border-radius:8px;border:none;background:var(--accent);color:#000;font-weight:700">Checkout</button>
 </div>
 
-<div class="controls" id="controls">
-  <button id="buyButton" class="controlBtn">Buy Pixels</button>
-  <button id="clearSelection" class="controlBtn small">Clear Sel</button>
-</div>
-
-<div id="minimapWrap">
-  <canvas id="minimap"></canvas>
-</div>
-
-<div class="footer">Million Hope Canvas</div>
-
 <script>
 const COLS=1000, ROWS=1000;
-let purchasedPixels={}, selectedPixels=[];
+let purchasedPixels={}, selectedPixels=[], hoveredCell=null;
 const PRICE_PER_PIXEL=1;
 
 const container=document.getElementById('canvasContainer');
@@ -108,8 +96,7 @@ const dpi=Math.max(1,window.devicePixelRatio||1);
 let scale=1,minScale=1,maxScale=60;
 let offsetX=0,offsetY=0;
 let isDragging=false, dragStart={x:0,y:0};
-let buyMode=false, hoveredCell=null;
-let rectangleSelectMode=false, rectSelecting=false, rectStart=null, rectRect=null;
+let buyMode=false, rectangleSelectMode=false, rectSelecting=false, rectStart=null, rectRect=null;
 
 function resize(){
   const w=container.clientWidth,h=container.clientHeight;
@@ -120,7 +107,7 @@ function resize(){
   ctx.setTransform(dpi,0,0,dpi,0,0);
   const fit=Math.min(w/COLS,h/ROWS);
   if(scale===1){scale=fit;minScale=fit;offsetX=(w-COLS*scale)/2;offsetY=(h-ROWS*scale)/2;}
-  constrainView(); draw(); drawMinimap();
+  constrainView(); draw();
 }
 window.addEventListener('resize',resize);
 
@@ -138,19 +125,30 @@ function draw(){
   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.restore();
   ctx.save();ctx.translate(offsetX,offsetY);ctx.scale(scale,scale);
   ctx.fillStyle='#0b0b0b'; ctx.fillRect(0,0,COLS,ROWS);
+  // purchased pixels
   ctx.fillStyle= getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim() || '#0a8f3a';
   for(const key in purchasedPixels){const [r,c]=key.split(',').map(Number);ctx.fillRect(c,r,1,1);}
-  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--selected').trim() || '#16c516';
+  // selected pixels
+  ctx.fillStyle= getComputedStyle(document.documentElement).getPropertyValue('--selected').trim() || '#16c516';
   for(let p of selectedPixels) ctx.fillRect(p.col,p.row,1,1);
-  if(buyMode && hoveredCell){const key=`${hoveredCell.row},${hoveredCell.col}`;if(!purchasedPixels[key]){ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hover').trim() || '#00a3ff';ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1);}}
-  if(scale>=6){ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=0.02;ctx.beginPath();for(let gx=0;gx<=COLS;gx++){ctx.moveTo(gx,0);ctx.lineTo(gx,ROWS);}for(let gy=0;gy<=ROWS;gy++){ctx.moveTo(0,gy);ctx.lineTo(COLS,gy);}ctx.stroke();}
+  // hover indication
+  if(buyMode && hoveredCell){
+    const key=`${hoveredCell.row},${hoveredCell.col}`;
+    if(!purchasedPixels[key] && !selectedPixels.find(s=>s.row===hoveredCell.row && s.col===hoveredCell.col)){
+      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hover').trim() || '#00a3ff';
+      ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1);
+    }
+  }
   ctx.restore();
   drawRectOverlay();
-  drawMinimapViewport();
 }
 
-// --- Buy mode and selection ---
-const buyButton=document.getElementById('buyButton');
+// --- Buy mode ---
+const buyButton=document.createElement('button');
+buyButton.textContent='Buy Pixels';buyButton.className='controlBtn';
+buyButton.style.position='fixed';buyButton.style.bottom='12px';buyButton.style.right='12px';buyButton.style.zIndex='50';
+document.body.appendChild(buyButton);
+
 const sidebar=document.getElementById('sidebar');
 buyButton.addEventListener('click',()=>{
   buyMode=!buyMode;
@@ -229,18 +227,23 @@ function drawRectOverlay(){
 const pixelList=document.getElementById('pixelList');
 const totalCostEl=document.getElementById('totalCost');
 const singleLinkCheckbox=document.getElementById('singleLink');
+const clearSelectionBtn=document.getElementById('clearSelection');
+
+clearSelectionBtn.addEventListener('click',()=>{selectedPixels=[];updateSidebar();draw();});
 
 function updateSidebar(){
   sidebar.classList.toggle('open',selectedPixels.length>0);
   pixelList.innerHTML='';
   selectedPixels.forEach((p,i)=>{
-    const div=document.createElement('div');div.className='pixelSection';
+    const div=document.createElement('div');div.className='pixelSection selected';
     const img=document.createElement('img');img.src=p.image||'https://via.placeholder.com/56';div.appendChild(img);
     const meta=document.createElement('div');meta.className='pixelMeta';
     meta.innerHTML=`<input type="file" accept="image/*" data-index="${i}" />`;
     div.appendChild(meta);
     const rem=document.createElement('button');rem.className='removePixel';rem.textContent='×';rem.onclick=()=>{selectedPixels.splice(i,1);updateSidebar();draw();}
     div.appendChild(rem);
+    div.addEventListener('mouseenter',()=>{div.classList.add('hovered')});
+    div.addEventListener('mouseleave',()=>{div.classList.remove('hovered')});
     pixelList.appendChild(div);
     meta.querySelector('input').addEventListener('change',handleFileUpload);
   });
@@ -252,17 +255,6 @@ function handleFileUpload(e){
   const idx=parseInt(e.target.dataset.index);const reader=new FileReader();
   reader.onload=function(evt){selectedPixels[idx].image=evt.target.result;draw();}
   reader.readAsDataURL(file);
-}
-
-// --- Minimap ---
-const minimap=document.getElementById('minimap');const mctx=minimap.getContext('2d');
-function drawMinimap(){mctx.clearRect(0,0,minimap.width,minimap.height);mctx.fillStyle='#0b0b0b';mctx.fillRect(0,0,minimap.width,minimap.height);mctx.fillStyle='#0a8f3a';
-for(const key in purchasedPixels){const [r,c]=key.split(',').map(Number);mctx.fillRect(c*minimap.width/COLS,r*minimap.height/ROWS,1*minimap.width/COLS,1*minimap.height/ROWS);}}
-function drawMinimapViewport(){
-  mctx.strokeStyle='#00f';mctx.lineWidth=1;
-  const vw=canvas.clientWidth*minimap.width/(COLS*scale),vh=canvas.clientHeight*minimap.height/(ROWS*scale);
-  const vx=-offsetX*minimap.width/(COLS*scale),vy=-offsetY*minimap.height/(ROWS*scale);
-  mctx.strokeRect(vx,vy,vw,vh);
 }
 
 // --- Pan & Zoom ---
@@ -279,9 +271,6 @@ canvas.addEventListener('wheel',(e)=>{
   offsetX=e.clientX-xw*scale; offsetY=e.clientY-yw*scale;
   constrainView(); draw(); e.preventDefault();
 },{passive:false});
-
-// --- Buy button and clear selection ---
-document.getElementById('clearSelection').addEventListener('click',()=>{selectedPixels=[];updateSidebar();draw();});
 
 resize(); draw();
 </script>
