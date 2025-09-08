@@ -2,112 +2,115 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Million Hope — Grid</title>
 <style>
 :root{
-  --bg:#0f0f10; --panel:#141416; --accent:#0f0; --muted:#7b7b7b;
-  --avail:#333; --purchased:#0a8f3a; --selected:#16c516; --hover:#00a3ff;
+  --bg:#0f0f10;
+  --panel:#141416;
+  --accent:#0f0;
+  --muted:#7b7b7b;
+  --purchased:#0a8f3a;
+  --selected:#16c516;
+  --hover:#00a3ff;
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:#eee;overflow:hidden}
-nav{position:fixed;left:0;right:0;top:0;height:56px;background:#151515;display:flex;align-items:center;padding:8px 12px;z-index:40}
-nav img{height:34px;margin-right:10px}
-nav h1{color:var(--accent);font-size:18px;margin:0 14px 0 0}
-nav .spacer{flex:1}
-button,input,select,textarea{font-family:inherit;font-size:14px}
-
-/* canvas area */
-#canvasContainer{position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg);overflow:hidden}
-canvas{display:block;width:100%;height:100%;background:transparent;cursor:crosshair}
-
-/* sidebar */
-#sidebar{position:fixed;top:56px;right:-360px;width:360px;bottom:0;background:var(--panel);border-left:1px solid #222;padding:12px;overflow-y:auto;transition:right .25s;z-index:45}
-#sidebar.open{right:0}
-#sidebar h2{margin:6px 0 10px 0}
-
-/* pixel item */
+nav{
+  position:fixed;top:0;left:0;right:0;height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;background:#151515;z-index:50;
+}
+nav .left{
+  display:flex;align-items:center;gap:10px;
+}
+nav .left img{height:34px;}
+nav .left h1{color:var(--accent);font-size:18px;margin:0;}
+nav .right button{
+  margin-left:8px;padding:6px 10px;border:none;border-radius:6px;background:var(--accent);color:#000;cursor:pointer;font-weight:700;
+}
+#canvasContainer{
+  position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg);overflow:hidden;
+}
+canvas{display:block;width:100%;height:100%;cursor:crosshair;background:transparent;}
+#sidebar{
+  position:fixed;top:56px;right:-360px;width:360px;bottom:0;background:var(--panel);
+  border-left:1px solid #222;padding:12px;overflow-y:auto;transition:right .25s;z-index:55;
+}
+#sidebar.open{right:0;}
+#sidebar h2{margin:6px 0 10px 0;}
 .pixelSection{display:flex;gap:8px;align-items:flex-start;border:1px solid #222;padding:8px;border-radius:8px;margin-bottom:8px;background:#111;position:relative}
 .pixelSection img{width:56px;height:56px;object-fit:cover;border-radius:4px}
 .pixelMeta{flex:1;font-size:13px}
 .pixelMeta input{width:100%;margin-top:6px;padding:6px;border-radius:6px;border:1px solid #222;background:#0b0b0b;color:#fff}
 .removePixel{position:absolute;top:6px;right:6px;background:#cc3333;border:none;color:#fff;border-radius:50%;width:24px;height:24px;cursor:pointer}
-
-/* small controls */
-.controls{position:fixed;top:64px;right:12px;z-index:46;display:flex;flex-direction:column;gap:8px}
+.controls{position:fixed;top:64px;right:380px;z-index:46;display:flex;flex-direction:column;gap:8px}
 .controlBtn{background:var(--accent);color:#0b0b0b;border:none;padding:10px 12px;border-radius:8px;cursor:pointer}
 .small{padding:8px 10px;font-size:13px}
-
-/* minimap */
 #minimapWrap{position:fixed;left:12px;bottom:12px;background:rgba(0,0,0,0.45);padding:8px;border-radius:8px;border:1px solid #222;z-index:46}
 #minimap{width:160px;height:160px;display:block;background:#0b0b0b;border-radius:4px}
-
-/* footer/help */
 .footer{position:fixed;left:12px;top:12px;background:rgba(0,0,0,0.35);padding:6px 10px;border-radius:6px;border:1px solid #222;font-size:13px;z-index:46}
 </style>
 </head>
 <body>
 
 <nav>
-  <img src="https://via.placeholder.com/34" alt="logo">
-  <h1>Million Hope</h1>
-  <div class="spacer"></div>
+  <div class="left">
+    <img src="https://via.placeholder.com/34" alt="logo">
+    <h1>Million Hope</h1>
+  </div>
+  <div class="right">
+    <button id="contactBtn">Contact Us</button>
+    <button id="aboutBtn">About Us</button>
+    <button id="langBtn">EN</button>
+  </div>
 </nav>
 
 <div id="canvasContainer">
   <canvas id="pixelCanvas"></canvas>
 </div>
 
-<!-- sidebar -->
 <div id="sidebar" aria-hidden="true">
-  <h2>Selected Pixels</h2>
+  <h2>Buy Pixels</h2>
   <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
     <input type="checkbox" id="singleLink"> Use one hyperlink for all pixels
   </label>
   <div style="display:flex;gap:8px;margin-bottom:8px">
     <button id="bulkApply" class="controlBtn">Bulk apply image/link</button>
-    <button id="boxSelectToggle" class="controlBtn">Box Select</button>
+    <button id="sliceSelectToggle" class="controlBtn">Rectangle Select</button>
   </div>
   <div id="pixelList"></div>
   <div id="totalCost" style="margin-top:8px;font-weight:700">Total Cost: 0 JOD</div>
   <button id="checkout" style="margin-top:10px;padding:10px;border-radius:8px;border:none;background:var(--accent);color:#000;font-weight:700">Checkout</button>
 </div>
 
-<!-- controls -->
 <div class="controls" id="controls">
   <button id="buyButton" class="controlBtn">Buy Pixels</button>
   <button id="clearSelection" class="controlBtn small">Clear Sel</button>
 </div>
 
-<!-- minimap -->
 <div id="minimapWrap">
   <canvas id="minimap"></canvas>
 </div>
 
-<!-- footer/help -->
-<div class="footer"></div>
+<div class="footer">Million Hope Canvas</div>
 
 <script>
-const COLS=1000,ROWS=1000;
-let purchasedPixels={};
-let selectedPixels=[];
+const COLS=1000, ROWS=1000;
+let purchasedPixels={}, selectedPixels=[];
 const PRICE_PER_PIXEL=1;
 
-/* canvas setup */
 const container=document.getElementById('canvasContainer');
 const canvas=document.getElementById('pixelCanvas');
 const ctx=canvas.getContext('2d',{alpha:false});
 const dpi=Math.max(1,window.devicePixelRatio||1);
+
 let scale=1,minScale=1,maxScale=60;
 let offsetX=0,offsetY=0;
-let isDragging=false,dragStart={x:0,y:0};
-let buyMode=false,hoveredCell=null;
-const buyButton=document.getElementById('buyButton');
-const pixelList=document.getElementById('pixelList');
-const singleLinkCheckbox=document.getElementById('singleLink');
-const totalCostEl=document.getElementById('totalCost');
+let isDragging=false, dragStart={x:0,y:0};
+let buyMode=false, hoveredCell=null;
+let rectangleSelectMode=false, rectSelecting=false, rectStart=null, rectRect=null;
 
-/* resize */
 function resize(){
   const w=container.clientWidth,h=container.clientHeight;
   canvas.style.width=w+'px';
@@ -121,173 +124,167 @@ function resize(){
 }
 window.addEventListener('resize',resize);
 
-/* map screen->world */
 function screenToWorld(clientX,clientY){
   const rect=canvas.getBoundingClientRect();
-  const x=(clientX-rect.left-offsetX)/scale;
-  const y=(clientY-rect.top-offsetY)/scale;
-  return {x,y};
+  return {x:(clientX-rect.left-offsetX)/scale,y:(clientY-rect.top-offsetY)/scale};
 }
-function worldToCell(x,y){
-  const col=Math.floor(x),row=Math.floor(y);
-  if(col<0||row<0||col>=COLS||row>=ROWS) return null;
-  return {row,col};
-}
-
-/* constrain view */
+function worldToCell(x,y){const col=Math.floor(x),row=Math.floor(y);if(col<0||row<0||col>=COLS||row>=ROWS)return null;return {row,col};}
 function constrainView(){
-  const w=canvas.clientWidth,h=canvas.clientHeight;
-  const worldW=COLS*scale,worldH=ROWS*scale;
+  const w=canvas.clientWidth,h=canvas.clientHeight,worldW=COLS*scale,worldH=ROWS*scale;
   if(worldW<=w) offsetX=(w-worldW)/2; else offsetX=Math.min(0,Math.max(offsetX,w-worldW));
   if(worldH<=h) offsetY=(h-worldH)/2; else offsetY=Math.min(0,Math.max(offsetY,h-worldH));
 }
-
-/* draw */
 function draw(){
-  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore();
-  ctx.save(); ctx.translate(offsetX,offsetY); ctx.scale(scale,scale);
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.restore();
+  ctx.save();ctx.translate(offsetX,offsetY);ctx.scale(scale,scale);
   ctx.fillStyle='#0b0b0b'; ctx.fillRect(0,0,COLS,ROWS);
-
-  // purchased
-  ctx.fillStyle='var(--purchased)';
-  for(const key in purchasedPixels){
-    const [r,c]=key.split(',').map(Number);
-    ctx.fillRect(c,r,1,1);
-  }
-
-  // selected
-  ctx.fillStyle='var(--selected)';
+  ctx.fillStyle= getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim() || '#0a8f3a';
+  for(const key in purchasedPixels){const [r,c]=key.split(',').map(Number);ctx.fillRect(c,r,1,1);}
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--selected').trim() || '#16c516';
   for(let p of selectedPixels) ctx.fillRect(p.col,p.row,1,1);
-
-  // hover
-  if(buyMode && hoveredCell){
-    const key=`${hoveredCell.row},${hoveredCell.col}`;
-    if(!purchasedPixels[key]){
-      ctx.fillStyle='var(--hover)';
-      ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1);
-    }
-  }
+  if(buyMode && hoveredCell){const key=`${hoveredCell.row},${hoveredCell.col}`;if(!purchasedPixels[key]){ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hover').trim() || '#00a3ff';ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1);}}
+  if(scale>=6){ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=0.02;ctx.beginPath();for(let gx=0;gx<=COLS;gx++){ctx.moveTo(gx,0);ctx.lineTo(gx,ROWS);}for(let gy=0;gy<=ROWS;gy++){ctx.moveTo(0,gy);ctx.lineTo(COLS,gy);}ctx.stroke();}
   ctx.restore();
+  drawRectOverlay();
   drawMinimapViewport();
 }
 
-/* buy button */
+// --- Buy mode and selection ---
+const buyButton=document.getElementById('buyButton');
+const sidebar=document.getElementById('sidebar');
 buyButton.addEventListener('click',()=>{
   buyMode=!buyMode;
   buyButton.textContent=buyMode?'Exit Buy Mode':'Buy Pixels';
-  document.getElementById('sidebar').classList.toggle('open',buyMode && selectedPixels.length>0);
+  sidebar.classList.toggle('open',buyMode && selectedPixels.length>0);
   if(!buyMode){selectedPixels=[];updateSidebar();draw();}
 });
 
-/* click select */
-canvas.addEventListener('click',e=>{
-  if(isDragging) return;
+canvas.addEventListener('click',(e)=>{
+  if(isDragging||rectSelecting) return;
   const {x,y}=screenToWorld(e.clientX,e.clientY);
   const cell=worldToCell(x,y); if(!cell) return;
-  const key=`${cell.row},${cell.col}`;
   if(buyMode){
+    const key=`${cell.row},${cell.col}`;
     if(purchasedPixels[key]) return;
-    const idx=selectedPixels.findIndex(p=>p.row===cell.row&&p.col===cell.col);
-    if(idx>-1) selectedPixels.splice(idx,1); else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:''});
+    const idx=selectedPixels.findIndex(p=>p.row===cell.row && p.col===cell.col);
+    if(idx>-1) selectedPixels.splice(idx,1);
+    else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:''});
     updateSidebar(); draw();
-  } else { if(purchasedPixels[key] && purchasedPixels[key].link) window.open(purchasedPixels[key].link,'_blank'); }
-});
-
-/* hover highlight */
-canvas.addEventListener('mousemove',e=>{
-  if(!buyMode || isDragging) return;
-  const {x,y}=screenToWorld(e.clientX,e.clientY);
-  const cell=worldToCell(x,y); if(!cell){hoveredCell=null;draw();return;}
-  if(!hoveredCell || hoveredCell.row!==cell.row || hoveredCell.col!==cell.col){
-    hoveredCell=cell; draw();
   }
 });
 
-/* pan */
-canvas.addEventListener('mousedown',e=>{if(e.button!==0)return;isDragging=true;dragStart.x=e.clientX-offsetX;dragStart.y=e.clientY-offsetY;});
-window.addEventListener('mousemove',e=>{if(isDragging){offsetX=e.clientX-dragStart.x;offsetY=e.clientY-dragStart.y;constrainView();draw();}});
-window.addEventListener('mouseup',()=>{isDragging=false;});
+// --- rectangle select ---
+const sliceSelectToggle=document.getElementById('sliceSelectToggle');
+sliceSelectToggle.addEventListener('click',()=>{
+  rectangleSelectMode=!rectangleSelectMode;
+  sliceSelectToggle.textContent=rectangleSelectMode?'Rectangle Select ✓':'Rectangle Select';
+});
 
-/* keyboard */
-window.addEventListener('keydown',e=>{if(e.key==='Escape'){buyMode=false;selectedPixels=[];updateSidebar();draw();}});
+canvas.addEventListener('mousedown',(e)=>{
+  if(e.button!==0) return;
+  if(rectangleSelectMode && buyMode){
+    rectSelecting=true;
+    rectStart={x:e.clientX,y:e.clientY};
+    rectRect=null;
+    window.addEventListener('mousemove',trackRectSelect);
+    window.addEventListener('mouseup',finishRectSelect,{once:true});
+    return;
+  }
+  isDragging=true;
+  dragStart.x=e.clientX-offsetX; dragStart.y=e.clientY-offsetY;
+});
 
-/* clear selection */
-document.getElementById('clearSelection').addEventListener('click',()=>{selectedPixels=[];updateSidebar();draw();});
+function trackRectSelect(e){
+  const sx=Math.min(rectStart.x,e.clientX),sy=Math.min(rectStart.y,e.clientY);
+  const ex=Math.max(rectStart.x,e.clientX),ey=Math.max(rectStart.y,e.clientY);
+  rectRect={left:sx,top:sy,right:ex,bottom:ey};
+  draw();
+}
 
-/* update sidebar */
+function finishRectSelect(){
+  if(!rectRect){rectSelecting=false; rectStart=null; return;}
+  const rect=canvas.getBoundingClientRect();
+  const x0=Math.max(0,Math.floor((rectRect.left-rect.left-offsetX)/scale));
+  const y0=Math.max(0,Math.floor((rectRect.top-rect.top-offsetY)/scale));
+  const x1=Math.min(COLS-1,Math.floor((rectRect.right-rect.left-offsetX)/scale));
+  const y1=Math.min(ROWS-1,Math.floor((rectRect.bottom-rect.top-offsetY)/scale));
+  for(let r=y0;r<=y1;r++){for(let c=x0;c<=x1;c++){
+    const key=`${r},${c}`;if(purchasedPixels[key]) continue;
+    if(!selectedPixels.find(s=>s.row===r&&s.col===c)) selectedPixels.push({row:r,col:c,image:null,link:''});
+  }}
+  rectSelecting=false; rectStart=null; rectRect=null;
+  window.removeEventListener('mousemove',trackRectSelect);
+  updateSidebar(); draw();
+}
+
+function drawRectOverlay(){
+  if(!rectRect) return;
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0);
+  ctx.strokeStyle='rgba(0,163,255,0.9)'; ctx.lineWidth=2;
+  ctx.strokeRect(rectRect.left-canvas.getBoundingClientRect().left,rectRect.top-canvas.getBoundingClientRect().top,rectRect.right-rectRect.left,rectRect.bottom-rectRect.top);
+  ctx.restore();
+}
+
+// --- Sidebar ---
+const pixelList=document.getElementById('pixelList');
+const totalCostEl=document.getElementById('totalCost');
+const singleLinkCheckbox=document.getElementById('singleLink');
+
 function updateSidebar(){
-  const sidebarEl=document.getElementById('sidebar');
-  sidebarEl.classList.toggle('open',selectedPixels.length>0);
+  sidebar.classList.toggle('open',selectedPixels.length>0);
   pixelList.innerHTML='';
   selectedPixels.forEach((p,i)=>{
-    const div=document.createElement('div'); div.className='pixelSection';
-    div.innerHTML=`<button class="removePixel" data-index="${i}">×</button>
-      <img src="${p.image||'https://via.placeholder.com/56'}" alt="">
-      <div class="pixelMeta">
-        <div style="font-size:13px">Row: <strong>${p.row}</strong> &nbsp; Col: <strong>${p.col}</strong></div>
-        <input type="file" class="imageInput" data-index="${i}" accept="image/*"/>
-        <input type="url" class="linkInput" data-index="${i}" placeholder="https://example.com" value="${p.link||''}" style="display:${singleLinkCheckbox.checked?'none':'block'}"/>
-      </div>`;
-    div.querySelector('.removePixel').addEventListener('click',()=>{selectedPixels.splice(i,1);updateSidebar();draw();});
+    const div=document.createElement('div');div.className='pixelSection';
+    const img=document.createElement('img');img.src=p.image||'https://via.placeholder.com/56';div.appendChild(img);
+    const meta=document.createElement('div');meta.className='pixelMeta';
+    meta.innerHTML=`<input type="file" accept="image/*" data-index="${i}" />`;
+    div.appendChild(meta);
+    const rem=document.createElement('button');rem.className='removePixel';rem.textContent='×';rem.onclick=()=>{selectedPixels.splice(i,1);updateSidebar();draw();}
+    div.appendChild(rem);
     pixelList.appendChild(div);
+    meta.querySelector('input').addEventListener('change',handleFileUpload);
   });
-  totalCostEl.innerText=`Total Cost: ${selectedPixels.length} JOD`;
+  totalCostEl.textContent=`Total Cost: ${selectedPixels.length*PRICE_PER_PIXEL} JOD`;
 }
 
-/* handle file/link changes */
-pixelList.addEventListener('change',e=>{
-  const idx=parseInt(e.target.dataset.index);
-  if(e.target.classList.contains('imageInput')){
-    const file=e.target.files[0]; if(!file) return;
-    const reader=new FileReader(); reader.onload=ev=>{selectedPixels[idx].image=ev.target.result;updateSidebar();}; reader.readAsDataURL(file);
-  } else if(e.target.classList.contains('linkInput')){
-    selectedPixels[idx].link=e.target.value.trim();
-  }
-});
-
-/* bulk apply */
-document.getElementById('bulkApply').addEventListener('click',()=>{
-  if(selectedPixels.length===0) return alert('Select pixels first');
-  const fileInput=document.createElement('input'); fileInput.type='file'; fileInput.accept='image/*';
-  fileInput.onchange=()=>{const f=fileInput.files[0];if(!f) return;const reader=new FileReader();reader.onload=()=>{for(let p of selectedPixels)p.image=reader.result;const link=prompt('Enter common hyperlink (leave empty if none)');if(link!==null)selectedPixels.forEach(p=>p.link=link.trim());updateSidebar();};reader.readAsDataURL(f);};
-  fileInput.click();
-});
-
-/* checkout */
-document.getElementById('checkout').addEventListener('click',()=>{
-  if(selectedPixels.length===0) return alert('No pixels selected');
-  if(singleLinkCheckbox.checked){
-    const link=prompt('Enter hyperlink for ALL selected pixels:');
-    if(link===null) return;
-    selectedPixels.forEach(p=>p.link=link.trim());
-  }
-  const payload=selectedPixels.map(p=>({row:p.row,col:p.col,link:p.link,image:p.image}));
-  console.log('Ready to send:',payload);
-  alert(`Demo: Purchased ${selectedPixels.length} pixel(s). Check console.`);
-  for(const p of selectedPixels) purchasedPixels[`${p.row},${p.col}`]={link:p.link||'',image:p.image||''};
-  selectedPixels=[]; updateSidebar(); draw();
-});
-
-/* minimap */
-const minimap=document.getElementById('minimap');
-const mctx=minimap.getContext('2d');
-function drawMinimap(){
-  const mw=minimap.width=minimap.clientWidth*dpi,mh=minimap.height=minimap.clientHeight*dpi;
-  mctx.setTransform(dpi,0,0,dpi,0,0); mctx.clearRect(0,0,minimap.clientWidth,minimap.clientHeight);
-  mctx.fillStyle='#070707'; mctx.fillRect(0,0,minimap.clientWidth,minimap.clientHeight);
-  // purchased demo
-  mctx.fillStyle='#0a8f3a';
-  for(const key in purchasedPixels){const [r,c]=key.split(',').map(Number);mctx.fillRect(c/COLS*minimap.clientWidth,r/ROWS*minimap.clientHeight,1,1);}
-  // view rectangle
-  const viewLeft=(-offsetX)/scale/COLS*minimap.clientWidth;
-  const viewTop=(-offsetY)/scale/ROWS*minimap.clientHeight;
-  const viewW=canvas.clientWidth/scale/COLS*minimap.clientWidth;
-  const viewH=canvas.clientHeight/scale/ROWS*minimap.clientHeight;
-  mctx.strokeStyle='#00a3ff'; mctx.lineWidth=2; mctx.strokeRect(viewLeft,viewTop,viewW,viewH);
+function handleFileUpload(e){
+  const file=e.target.files[0];if(!file) return;
+  const idx=parseInt(e.target.dataset.index);const reader=new FileReader();
+  reader.onload=function(evt){selectedPixels[idx].image=evt.target.result;draw();}
+  reader.readAsDataURL(file);
 }
-function drawMinimapViewport(){drawMinimap();}
+
+// --- Minimap ---
+const minimap=document.getElementById('minimap');const mctx=minimap.getContext('2d');
+function drawMinimap(){mctx.clearRect(0,0,minimap.width,minimap.height);mctx.fillStyle='#0b0b0b';mctx.fillRect(0,0,minimap.width,minimap.height);mctx.fillStyle='#0a8f3a';
+for(const key in purchasedPixels){const [r,c]=key.split(',').map(Number);mctx.fillRect(c*minimap.width/COLS,r*minimap.height/ROWS,1*minimap.width/COLS,1*minimap.height/ROWS);}}
+function drawMinimapViewport(){
+  mctx.strokeStyle='#00f';mctx.lineWidth=1;
+  const vw=canvas.clientWidth*minimap.width/(COLS*scale),vh=canvas.clientHeight*minimap.height/(ROWS*scale);
+  const vx=-offsetX*minimap.width/(COLS*scale),vy=-offsetY*minimap.height/(ROWS*scale);
+  mctx.strokeRect(vx,vy,vw,vh);
+}
+
+// --- Pan & Zoom ---
+canvas.addEventListener('mousemove',(e)=>{
+  if(isDragging){offsetX=e.clientX-dragStart.x; offsetY=e.clientY-dragStart.y; constrainView(); draw();}
+  else{const {x,y}=screenToWorld(e.clientX,e.clientY);hoveredCell=worldToCell(x,y);draw();}
+});
+canvas.addEventListener('mouseup',()=>{isDragging=false});
+canvas.addEventListener('mouseleave',()=>{isDragging=false;hoveredCell=null;draw();});
+canvas.addEventListener('wheel',(e)=>{
+  const {x:xw,y:yw}=screenToWorld(e.clientX,e.clientY);
+  const delta=e.deltaY<0?1.1:0.9;
+  scale=Math.min(maxScale,Math.max(minScale,scale*delta));
+  offsetX=e.clientX-xw*scale; offsetY=e.clientY-yw*scale;
+  constrainView(); draw(); e.preventDefault();
+},{passive:false});
+
+// --- Buy button and clear selection ---
+document.getElementById('clearSelection').addEventListener('click',()=>{selectedPixels=[];updateSidebar();draw();});
 
 resize(); draw();
 </script>
+
 </body>
 </html>
