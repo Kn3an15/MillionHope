@@ -12,7 +12,6 @@
   *{box-sizing:border-box}
   body { margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); overflow:hidden; }
 
-  /* Top nav */
   nav{
     position:fixed; top:0; left:0; right:0; height:60px;
     background:#222; display:flex; align-items:center; padding:10px 16px; z-index:10;
@@ -22,27 +21,29 @@
   nav a{color:#fff; text-decoration:none; margin-left:16px}
   nav a:hover{color:#0f0}
 
-  /* Canvas viewport */
   #canvasContainer{
     position:absolute; top:60px; left:0; right:0; bottom:0;
     overflow:hidden; background:var(--bg);
   }
   canvas{ display:block; width:100%; height:100%; background:var(--bg); touch-action: none; }
 
-  /* Buy button */
   #buyButton{
     position:fixed; top:70px; right:20px;
     padding:10px 14px; background:#0f0; color:#111; border:none; border-radius:6px; cursor:pointer; z-index:12;
   }
   #buyButton:hover{background:#0c0}
 
-  /* Sidebar (slides in) */
   #sidebar{
     position:fixed; top:60px; right:-320px; width:320px; bottom:0;
     background:var(--panel); color:#fff; border-left:1px solid var(--grid);
-    padding:14px; overflow-y:auto; z-index:11; transition:right .25s ease;
+    padding:14px; overflow-y:auto; z-index:11; transition:right .25s ease, bottom .25s ease, width .25s ease;
   }
   #sidebar.open{ right:0; }
+  @media (max-width:768px){
+    #sidebar{
+      right:0; bottom:0; width:100%; height:200px; border-left:none; border-top:1px solid var(--grid);
+    }
+  }
 
   .pixelSection{
     display:flex; gap:8px; align-items:flex-start;
@@ -74,7 +75,6 @@
   <h1>Million Pixel</h1>
   <a href="about.html">About Us</a>
   <a href="#">Contact Us</a>
-  <a href="#">Language</a>
 </nav>
 
 <button id="buyButton">Buy Pixels</button>
@@ -115,109 +115,97 @@ let buyMode = false;
 let scale = 1, offsetX = 0, offsetY = 0, isDragging = false, dragStartX = 0, dragStartY = 0, minScale = 1, maxScale = 60;
 let rectStart = null;
 
-// ======== Canvas resize ========
+// Resize
 function resizeCanvas(){
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   const w = container.clientWidth;
   const h = container.clientHeight;
   canvas.width = Math.floor(w*dpr);
   canvas.height = Math.floor(h*dpr);
-  canvas.style.width = w + 'px';
-  canvas.style.height = h + 'px';
+  canvas.style.width = w+'px';
+  canvas.style.height = h+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
-
-  const fitX = w/cols;
-  const fitY = h/rows;
-  const fit = Math.min(fitX, fitY);
-  if (scale===1){
-    scale=fit; minScale=fit;
-    offsetX=(w-cols*scale)/2;
-    offsetY=(h-rows*scale)/2;
-  }
-  constrainView();
-  draw();
+  const fit=Math.min(w/cols,h/rows);
+  if(scale===1){ scale=fit; minScale=fit; offsetX=(w-cols*scale)/2; offsetY=(h-rows*scale)/2; }
+  constrainView(); draw();
 }
 window.addEventListener('resize', resizeCanvas);
 
-// ======== Coordinate helpers ========
-function screenToWorld(clientX, clientY){
-  const rect = canvas.getBoundingClientRect();
-  return { x: (clientX - rect.left - offsetX)/scale, y: (clientY - rect.top - offsetY)/scale };
-}
-function worldToCell(x,y){
-  const col=Math.floor(x), row=Math.floor(y);
-  if(col<0||row<0||col>=cols||row>=rows) return null;
-  return {row,col};
-}
+// Coord
+function screenToWorld(x,y){ const rect=canvas.getBoundingClientRect(); return { x:(x-rect.left-offsetX)/scale, y:(y-rect.top-offsetY)/scale }; }
+function worldToCell(x,y){ const col=Math.floor(x), row=Math.floor(y); if(col<0||row<0||col>=cols||row>=rows) return null; return {row,col}; }
 
-// ======== Draw ========
+// Draw
 function clearViewport(){ ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore(); }
 function draw(){
   clearViewport();
-  ctx.save();
-  ctx.translate(offsetX, offsetY);
-  ctx.scale(scale, scale);
-  ctx.fillStyle = '#1b1b1b';
-  ctx.fillRect(0,0,cols,rows);
+  ctx.save(); ctx.translate(offsetX,offsetY); ctx.scale(scale,scale);
+  ctx.fillStyle='#1b1b1b'; ctx.fillRect(0,0,cols,rows);
 
-  // Purchased
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim()||'#0a0';
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim()||'#0a0';
   for(const key in purchasedPixels){ const [r,c]=key.split(',').map(Number); ctx.fillRect(c,r,1,1); }
 
-  // Selected
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--selected').trim()||'#00d600';
-  for(let i=0;i<selectedPixels.length;i++){ const p=selectedPixels[i]; ctx.fillRect(p.col,p.row,1,1); }
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--selected').trim()||'#00d600';
+  for(const p of selectedPixels){ ctx.fillRect(p.col,p.row,1,1); }
 
-  // Hover
-  if(buyMode && hoveredCell){ const key=`${hoveredCell.row},${hoveredCell.col}`; if(!purchasedPixels[key]){ ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--hover').trim()||'#00a3ff'; ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1); } }
+  if(buyMode && hoveredCell){ const key=`${hoveredCell.row},${hoveredCell.col}`; if(!purchasedPixels[key]){ ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hover').trim()||'#00a3ff'; ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1); } }
 
-  // Rectangle preview
   if(rectStart && rectSelectToggle.checked){ ctx.fillStyle='rgba(0,214,0,0.3)';
-    const endX = hoveredCell ? hoveredCell.col+0.99 : rectStart.x;
-    const endY = hoveredCell ? hoveredCell.row+0.99 : rectStart.y;
-    const rx = Math.min(rectStart.x,endX), ry=Math.min(rectStart.y,endY);
-    const rw = Math.abs(endX-rectStart.x), rh = Math.abs(endY-rectStart.y);
+    const endX=hoveredCell?hoveredCell.col:rectStart.x;
+    const endY=hoveredCell?hoveredCell.row:rectStart.y;
+    const rx=Math.min(rectStart.x,endX), ry=Math.min(rectStart.y,endY);
+    const rw=Math.abs(endX-rectStart.x)+1, rh=Math.abs(endY-rectStart.y)+1;
     ctx.fillRect(rx,ry,rw,rh);
   }
 
   ctx.restore();
 }
 
-// ======== Interactions ========
+// Interactions
 canvas.addEventListener('mousedown', e=>{ isDragging=true; dragStartX=e.clientX-offsetX; dragStartY=e.clientY-offsetY; });
 window.addEventListener('mousemove', e=>{ if(!isDragging) return; offsetX=e.clientX-dragStartX; offsetY=e.clientY-dragStartY; constrainView(); draw(); });
 window.addEventListener('mouseup', ()=>{ isDragging=false; });
 
-canvas.addEventListener('click', e=>{
-  const {x,y}=screenToWorld(e.clientX,e.clientY); const cell=worldToCell(x,y); if(!cell) return;
-  const key=`${cell.row},${cell.col}`;
-  if(buyMode){
-    if(purchasedPixels[key]) return;
-    if(rectSelectToggle.checked){
-      if(!rectStart){ rectStart={x:cell.col,y:cell.row}; return; }
-      const minX=Math.min(rectStart.x,cell.col), maxX=Math.max(rectStart.x,cell.col);
-      const minY=Math.min(rectStart.y,cell.row), maxY=Math.max(rectStart.y,cell.row);
-      for(let r=minY;r<=maxY;r++){ for(let c=minX;c<=maxX;c++){ const k=`${r},${c}`; if(!purchasedPixels[k] && !selectedPixels.some(p=>p.row===r && p.col===c)) selectedPixels.push({row:r,col:c,image:null,link:""}); } }
-      rectStart=null; updateSidebar(); draw(); return;
-    }
-    const idx=selectedPixels.findIndex(p=>p.row===cell.row && p.col===cell.col);
-    if(idx>-1) selectedPixels.splice(idx,1); else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:""});
-    updateSidebar(); draw();
-  } else { if(purchasedPixels[key]) window.open(purchasedPixels[key],'_blank'); }
-});
-
 canvas.addEventListener('mousemove', e=>{
-  const {x,y}=screenToWorld(e.clientX,e.clientY); hoveredCell=worldToCell(x,y); draw();
+  const {x,y}=screenToWorld(e.clientX,e.clientY);
+  const cell=worldToCell(x,y);
+  const changed=(cell&&(!hoveredCell||cell.row!==hoveredCell.row||cell.col!==hoveredCell.col))||(!cell&&hoveredCell);
+  hoveredCell=cell;
+  if(changed) draw();
 });
 
 canvas.addEventListener('mouseleave', ()=>{ hoveredCell=null; draw(); });
 
-// Zoom (mouse wheel)
+canvas.addEventListener('click', e=>{
+  if(!buyMode) return;
+  const {x,y}=screenToWorld(e.clientX,e.clientY);
+  const cell=worldToCell(x,y);
+  if(!cell) return;
+  const key=`${cell.row},${cell.col}`;
+  if(purchasedPixels[key]) return;
+
+  if(rectSelectToggle.checked){
+    if(!rectStart){ rectStart={x:cell.col,y:cell.row}; return; }
+    const endX=cell.col, endY=cell.row;
+    const rx=Math.min(rectStart.x,endX), ry=Math.min(rectStart.y,endY);
+    const rw=Math.abs(endX-rectStart.x)+1, rh=Math.abs(endY-rectStart.y)+1;
+    for(let r=ry;r<ry+rh;r++) for(let c=rx;c<rx+rw;c++){
+      if(!selectedPixels.some(p=>p.row===r && p.col===c)) selectedPixels.push({row:r,col:c,image:null,link:""});
+    }
+    rectStart=null;
+  } else {
+    const idx=selectedPixels.findIndex(p=>p.row===cell.row&&p.col===cell.col);
+    if(idx>-1) selectedPixels.splice(idx,1); else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:""});
+  }
+  updateSidebar();
+  draw();
+});
+
 canvas.addEventListener('wheel', e=>{
   e.preventDefault();
   const zoomFactor=Math.exp((e.deltaY<0?1:-1)*0.12);
-  const prevScale=scale; let next=prevScale*zoomFactor;
-  next=Math.max(minScale,Math.min(maxScale,next));
+  const prevScale=scale;
+  let next=prevScale*zoomFactor; next=Math.max(minScale,Math.min(maxScale,next));
   if(next===prevScale) return;
   const rect=canvas.getBoundingClientRect();
   const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
@@ -226,96 +214,58 @@ canvas.addEventListener('wheel', e=>{
   constrainView(); draw();
 },{passive:false});
 
+function constrainView(){
+  const w=canvas.clientWidth, h=canvas.clientHeight, worldW=cols*scale, worldH=rows*scale;
+  offsetX=worldW<=w?(w-worldW)/2:Math.min(0,Math.max(offsetX,w-worldW));
+  offsetY=worldH<=h?(h-worldH)/2:Math.min(0,Math.max(offsetY,h-worldH));
+}
+
 // Sidebar
 function updateSidebar(){
   sidebar.classList.toggle('open', buyMode && selectedPixels.length>0);
-  messageBar.style.display = selectedPixels.length>0 ? 'none':'block';
+  messageBar.style.display=selectedPixels.length>0?'none':'block';
   pixelList.innerHTML='';
   selectedPixels.forEach((p,i)=>{
-    const div=document.createElement('div'); div.className='pixelSection'; div.dataset.index=i;
+    const div=document.createElement('div');
+    div.className='pixelSection'; div.dataset.index=i;
     div.innerHTML=`<img src="${p.image||'https://via.placeholder.com/50'}" alt="">
       <div class="pixelMeta">
-      <div><strong>Row:</strong>${p.row}&nbsp;<strong>Col:</strong>${p.col}</div>
-      <input type="file" class="imageInput" data-index="${i}" accept="image/*">
-      <input type="url" class="linkInput" placeholder="Hyperlink" value="${p.link||''}" data-index="${i}">
+        <div><strong>Row:</strong> ${p.row} &nbsp; <strong>Col:</strong> ${p.col}</div>
+        <input type="url" class="linkInput" placeholder="Hyperlink" value="${p.link||''}" data-index="${i}">
       </div>`;
-    div.addEventListener('mouseenter',()=>{ hoveredCell={row:p.row,col:p.col}; draw(); });
-    div.addEventListener('mouseleave',()=>{ hoveredCell=null; draw(); });
+    div.addEventListener('mouseenter', ()=>{ hoveredCell={row:p.row,col:p.col}; draw(); });
+    div.addEventListener('mouseleave', ()=>{ hoveredCell=null; draw(); });
     pixelList.appendChild(div);
   });
-  document.querySelectorAll('.linkInput').forEach(inp=>{ inp.style.display=singleLinkCheckbox.checked?'none':'block'; });
   totalCostEl.textContent=`Total Cost: ${selectedPixels.length} JOD`;
 }
-pixelList.addEventListener('change', e=>{
-  const idx=Number(e.target.dataset.index); if(Number.isNaN(idx)) return;
-  if(e.target.classList.contains('imageInput')){ const file=e.target.files[0]; if(!file) return;
-    const reader=new FileReader(); reader.onload=ev=>{ selectedPixels[idx].image=ev.target.result; updateSidebar(); }; reader.readAsDataURL(file);
-  }
-  if(e.target.classList.contains('linkInput')) selectedPixels[idx].link=e.target.value.trim();
-});
-singleLinkCheckbox.addEventListener('change',()=>{ document.querySelectorAll('.linkInput').forEach(inp=>{ inp.style.display=singleLinkCheckbox.checked?'none':'block'; }); });
+singleLinkCheckbox.addEventListener('change', ()=>{ document.querySelectorAll('.linkInput').forEach(inp=>inp.style.display=singleLinkCheckbox.checked?'none':'block'); });
+
 uploadImage.addEventListener('change', e=>{
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=ev=>{
+  reader.onload=(ev)=>{
     if(rectSelectToggle.checked){
       selectedPixels.forEach(p=>p.image=ev.target.result);
-    } else { const last=selectedPixels[selectedPixels.length-1]; if(last) last.image=ev.target.result; }
+    } else {
+      selectedPixels.forEach(p=>p.image=ev.target.result);
+    }
     updateSidebar(); draw();
-  };
+  }
   reader.readAsDataURL(file);
 });
-document.getElementById('checkout').addEventListener('click', ()=>{
-  if(selectedPixels.length===0) return;
-  if(singleLinkCheckbox.checked){ const link=prompt('Enter hyperlink for ALL selected pixels:'); if(link!==null) selectedPixels.forEach(p=>p.link=link.trim()); }
-  console.log('Selected payload:', selectedPixels);
-});
+
+document.getElementById('checkout').addEventListener('click', ()=>{ if(selectedPixels.length===0) return; if(singleLinkCheckbox.checked){ const link=prompt('Enter hyperlink for ALL selected pixels:'); if(link!==null) selectedPixels.forEach(p=>p.link=link.trim()); } alert(`Purchasing ${selectedPixels.length} pixel(s) for ${selectedPixels.length} JOD`); console.log('Selected payload:',selectedPixels); });
 
 buyButton.addEventListener('click', ()=>{
-  buyMode=!buyMode; buyButton.textContent=buyMode?'Exit Buy Mode':'Buy Pixels';
-  messageBar.style.display=buyMode?'block':'none';
-  updateSidebar(); draw();
-});
-
-function constrainView(){ const w=canvas.clientWidth,h=canvas.clientHeight,worldW=cols*scale,worldH=rows*scale;
-  if(worldW<=w) offsetX=(w-worldW)/2; else offsetX=Math.min(0,Math.max(offsetX,w-worldW));
-  if(worldH<=h) offsetY=(h-worldH)/2; else offsetY=Math.min(0,Math.max(offsetY,h-worldH));
-}
-
-// ======== Mobile Touch (drag, pinch zoom, rectangle select) ========
-let lastTouchDist = null, touchMode = null;
-canvas.addEventListener('touchstart', e=>{
-  if(!buyMode) return;
-  if(e.touches.length===1){ touchMode='rect'; const {x,y}=screenToWorld(e.touches[0].clientX,e.touches[0].clientY); rectStart={x,y}; }
-  else if(e.touches.length===2){ touchMode='pinch'; lastTouchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); }
-}, {passive:false});
-canvas.addEventListener('touchmove', e=>{
-  e.preventDefault(); if(!buyMode) return;
-  if(touchMode==='rect' && e.touches.length===1){ const {x,y}=screenToWorld(e.touches[0].clientX,e.touches[0].clientY); hoveredCell=worldToCell(x,y); draw(); }
-  else if(touchMode==='pinch' && e.touches.length===2){
-    const dx=e.touches[0].clientX-e.touches[1].clientX, dy=e.touches[0].clientY-e.touches[1].clientY;
-    const dist=Math.hypot(dx,dy), zoomFactor=dist/lastTouchDist; lastTouchDist=dist;
-    const rect=canvas.getBoundingClientRect(); const cx=(e.touches[0].clientX+e.touches[1].clientX)/2-rect.left; const cy=(e.touches[0].clientY+e.touches[1].clientY)/2-rect.top;
-    const worldX=(cx-offsetX)/scale, worldY=(cy-offsetY)/scale;
-    scale*=zoomFactor; scale=Math.max(minScale,Math.min(maxScale,scale));
-    offsetX=cx-worldX*scale; offsetY=cy-worldY*scale; constrainView(); draw();
-  }
-},{passive:false});
-canvas.addEventListener('touchend', e=>{
-  if(!buyMode) return;
-  if(touchMode==='rect' && rectStart){ const {x,y}=hoveredCell?{x:hoveredCell.col,y:hoveredCell.row}:rectStart;
-    const minX=Math.floor(Math.min(rectStart.x,x)), maxX=Math.floor(Math.max(rectStart.x,x));
-    const minY=Math.floor(Math.min(rectStart.y,y)), maxY=Math.floor(Math.max(rectStart.y,y));
-    for(let r=minY;r<=maxY;r++){ for(let c=minX;c<=maxX;c++){ const key=`${r},${c}`; if(!purchasedPixels[key] && !selectedPixels.some(p=>p.row===r && p.col===c)) selectedPixels.push({row:r,col:c,image:null,link:""}); } }
-    rectStart=null; updateSidebar(); draw();
-  }
-  if(e.touches.length<2) lastTouchDist=null;
-  if(e.touches.length===0) touchMode=null;
+  buyMode=!buyMode;
+  buyButton.textContent=buyMode?'Exit Buy Mode':'Buy Pixels';
+  updateSidebar();
+  draw();
 });
 
 resizeCanvas();
 draw();
 </script>
-
 </body>
 </html>
