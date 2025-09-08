@@ -15,38 +15,34 @@
   /* Top nav */
   nav{
     position:fixed; top:0; left:0; right:0; height:60px;
-    background:#222; display:flex; align-items:center; padding:0 16px; z-index:20;
+    background:#222; display:flex; align-items:center; padding:10px 16px; z-index:10;
   }
   nav img{height:30px; margin-right:10px}
   nav h1{color:#0f0; font-size:18px; margin:0 auto 0 0}
-  nav .nav-buttons{margin-left:auto; display:flex; gap:12px;}
-  nav .nav-buttons button{background:#333; border:none; color:#fff; padding:6px 10px; border-radius:4px; cursor:pointer;}
-  nav .nav-buttons button:hover{background:#0f0; color:#111}
+  nav a{color:#fff; text-decoration:none; margin-left:16px}
+  nav a:hover{color:#0f0}
 
   /* Canvas viewport */
   #canvasContainer{
     position:absolute; top:60px; left:0; right:0; bottom:0;
     overflow:hidden; background:var(--bg);
-    touch-action: none;
   }
-  canvas{ display:block; width:100%; height:100%; background:var(--bg); }
+  canvas{ display:block; width:100%; height:100%; background:var(--bg); touch-action: none; }
 
   /* Buy button */
   #buyButton{
     position:fixed; top:70px; right:20px;
-    padding:10px 14px; background:#0f0; color:#111; border:none; border-radius:6px; cursor:pointer; z-index:21;
+    padding:10px 14px; background:#0f0; color:#111; border:none; border-radius:6px; cursor:pointer; z-index:12;
   }
   #buyButton:hover{background:#0c0}
 
-  /* Sidebar */
+  /* Sidebar (slides in) */
   #sidebar{
-    position:fixed; top:60px; right:-360px; width:360px; bottom:0;
+    position:fixed; top:60px; right:-320px; width:320px; bottom:0;
     background:var(--panel); color:#fff; border-left:1px solid var(--grid);
-    padding:14px; overflow-y:auto; z-index:20; transition:right .25s ease, bottom .25s ease;
+    padding:14px; overflow-y:auto; z-index:11; transition:right .25s ease;
   }
-  #sidebar.mobile{top:auto; bottom:-360px; right:0; width:100%; height:360px; border-left:none; border-top:1px solid var(--grid);}
-  #sidebar.open.pc{right:0;}
-  #sidebar.open.mobile{bottom:0;}
+  #sidebar.open{ right:0; }
 
   .pixelSection{
     display:flex; gap:8px; align-items:flex-start;
@@ -57,8 +53,6 @@
   .pixelMeta input[type="url"], .pixelMeta input[type="file"]{ width:100%; margin-top:6px; }
   .pixelSection:hover{ background:#0b2a60; cursor:pointer; }
 
-  #gentleMsg{font-size:13px; color:#ff0; margin-bottom:8px; display:none;}
-
   #totalCost{ font-weight:bold; margin-top:8px; }
   #checkout{
     margin-top:10px; padding:10px; width:100%;
@@ -68,9 +62,8 @@
 
   label.inline{ display:flex; align-items:center; gap:8px; margin:6px 0 8px; font-size:13px }
 
-  /* Mobile adjustments */
-  @media (max-width:768px){
-    #buyButton{top:auto; bottom:80px; right:20px;}
+  #messageBar{
+    margin-bottom:10px; color:#0f0; font-weight:bold;
   }
 </style>
 </head>
@@ -79,11 +72,9 @@
 <nav>
   <img src="https://via.placeholder.com/30" alt="Logo">
   <h1>Million Pixel</h1>
-  <div class="nav-buttons">
-    <button onclick="alert('Contact us clicked')">Contact Us</button>
-    <button onclick="alert('About us clicked')">About Us</button>
-    <button onclick="alert('Language select clicked')">Language</button>
-  </div>
+  <a href="about.html">About Us</a>
+  <a href="#">Contact Us</a>
+  <a href="#">Language</a>
 </nav>
 
 <button id="buyButton">Buy Pixels</button>
@@ -93,10 +84,11 @@
 </div>
 
 <div id="sidebar">
-  <div id="gentleMsg">Select pixels to start</div>
+  <div id="messageBar">Press "Buy Pixels" and select pixels to start</div>
+  <h2 style="margin:0 0 8px">Selected Pixels</h2>
   <label class="inline"><input type="checkbox" id="singleLink"> Use one hyperlink for all pixels</label>
-  <label class="inline"><input type="checkbox" id="sliceMode"> Slice single image across selection</label>
-  <input type="file" id="imageUpload" accept="image/*">
+  <label class="inline"><input type="checkbox" id="rectSelectToggle"> Rectangle Selection</label>
+  <label class="inline">Upload image: <input type="file" id="uploadImage" accept="image/*"></label>
   <div id="pixelList"></div>
   <div id="totalCost">Total Cost: 0 JOD</div>
   <button id="checkout">Checkout</button>
@@ -106,47 +98,39 @@
 const canvas = document.getElementById('pixelCanvas');
 const ctx = canvas.getContext('2d', { alpha:false });
 const container = document.getElementById('canvasContainer');
-
 const sidebar = document.getElementById('sidebar');
 const pixelList = document.getElementById('pixelList');
 const totalCostEl = document.getElementById('totalCost');
 const singleLinkCheckbox = document.getElementById('singleLink');
 const buyButton = document.getElementById('buyButton');
-const gentleMsg = document.getElementById('gentleMsg');
-const sliceModeCheckbox = document.getElementById('sliceMode');
-const imageUpload = document.getElementById('imageUpload');
+const messageBar = document.getElementById('messageBar');
+const rectSelectToggle = document.getElementById('rectSelectToggle');
+const uploadImage = document.getElementById('uploadImage');
 
 const cols = 1000, rows = 1000;
-let purchasedPixels = {"0,0":"https://example.com"}; 
+let purchasedPixels = { "0,0":"https://example.com" };
 let selectedPixels = [];
 let hoveredCell = null;
 let buyMode = false;
-let isDragging = false;
-let dragStartX = 0, dragStartY = 0;
-let offsetX = 0, offsetY = 0;
-let scale = 1, minScale = 1, maxScale = 60;
+let scale = 1, offsetX = 0, offsetY = 0, isDragging = false, dragStartX = 0, dragStartY = 0, minScale = 1, maxScale = 60;
+let rectStart = null;
 
-// Mobile detection
-const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-if(isMobile) sidebar.classList.add('mobile');
-
-// Resize canvas
+// ======== Canvas resize ========
 function resizeCanvas(){
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   const w = container.clientWidth;
   const h = container.clientHeight;
-  canvas.width  = Math.floor(w*dpr);
+  canvas.width = Math.floor(w*dpr);
   canvas.height = Math.floor(h*dpr);
-  canvas.style.width = w+'px';
-  canvas.style.height = h+'px';
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
 
   const fitX = w/cols;
   const fitY = h/rows;
-  const fit = Math.min(fitX,fitY);
-  if(scale===1){
-    scale = fit;
-    minScale = fit;
+  const fit = Math.min(fitX, fitY);
+  if (scale===1){
+    scale=fit; minScale=fit;
     offsetX=(w-cols*scale)/2;
     offsetY=(h-rows*scale)/2;
   }
@@ -155,18 +139,10 @@ function resizeCanvas(){
 }
 window.addEventListener('resize', resizeCanvas);
 
-// Constrain view
-function constrainView(){
-  const w=canvas.clientWidth,h=canvas.clientHeight;
-  const worldW=cols*scale,worldH=rows*scale;
-  if(worldW<=w) offsetX=(w-worldW)/2; else offsetX=Math.min(0,Math.max(offsetX,w-worldW));
-  if(worldH<=h) offsetY=(h-worldH)/2; else offsetY=Math.min(0,Math.max(offsetY,h-worldH));
-}
-
-// Coord helpers
-function screenToWorld(x,y){
+// ======== Coordinate helpers ========
+function screenToWorld(clientX, clientY){
   const rect = canvas.getBoundingClientRect();
-  return {(x-rect.left-offsetX)/scale, y:(y-rect.top-offsetY)/scale};
+  return { x: (clientX - rect.left - offsetX)/scale, y: (clientY - rect.top - offsetY)/scale };
 }
 function worldToCell(x,y){
   const col=Math.floor(x), row=Math.floor(y);
@@ -174,167 +150,172 @@ function worldToCell(x,y){
   return {row,col};
 }
 
-// Drawing
-function clearViewport(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.restore();}
+// ======== Draw ========
+function clearViewport(){ ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore(); }
 function draw(){
   clearViewport();
-  ctx.save();ctx.translate(offsetX,offsetY);ctx.scale(scale,scale);
-  ctx.fillStyle='#1b1b1b'; ctx.fillRect(0,0,cols,rows);
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = '#1b1b1b';
+  ctx.fillRect(0,0,cols,rows);
 
   // Purchased
-  ctx.fillStyle= getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim()||'#0a0';
-  for(const key in purchasedPixels){const [r,c]=key.split(',').map(Number); ctx.fillRect(c,r,1,1);}
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--purchased').trim()||'#0a0';
+  for(const key in purchasedPixels){ const [r,c]=key.split(',').map(Number); ctx.fillRect(c,r,1,1); }
 
   // Selected
-  ctx.fillStyle= getComputedStyle(document.documentElement).getPropertyValue('--selected').trim()||'#00d600';
-  for(let p of selectedPixels){ctx.fillRect(p.col,p.row,1,1);}
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--selected').trim()||'#00d600';
+  for(let i=0;i<selectedPixels.length;i++){ const p=selectedPixels[i]; ctx.fillRect(p.col,p.row,1,1); }
 
   // Hover
-  if(buyMode && hoveredCell){
-    const key = `${hoveredCell.row},${hoveredCell.col}`;
-    if(!purchasedPixels[key]){
-      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hover').trim()||'#00a3ff';
-      ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1);
-    }
+  if(buyMode && hoveredCell){ const key=`${hoveredCell.row},${hoveredCell.col}`; if(!purchasedPixels[key]){ ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--hover').trim()||'#00a3ff'; ctx.fillRect(hoveredCell.col,hoveredCell.row,1,1); } }
+
+  // Rectangle preview
+  if(rectStart && rectSelectToggle.checked){ ctx.fillStyle='rgba(0,214,0,0.3)';
+    const endX = hoveredCell ? hoveredCell.col+0.99 : rectStart.x;
+    const endY = hoveredCell ? hoveredCell.row+0.99 : rectStart.y;
+    const rx = Math.min(rectStart.x,endX), ry=Math.min(rectStart.y,endY);
+    const rw = Math.abs(endX-rectStart.x), rh = Math.abs(endY-rectStart.y);
+    ctx.fillRect(rx,ry,rw,rh);
   }
+
   ctx.restore();
 }
 
-// Mouse interactions
-canvas.addEventListener('click',(e)=>{
-  const {x,y}=screenToWorld(e.clientX,e.clientY);
-  const cell=worldToCell(x,y);
-  if(!cell) return;
-  const key = `${cell.row},${cell.col}`;
+// ======== Interactions ========
+canvas.addEventListener('mousedown', e=>{ isDragging=true; dragStartX=e.clientX-offsetX; dragStartY=e.clientY-offsetY; });
+window.addEventListener('mousemove', e=>{ if(!isDragging) return; offsetX=e.clientX-dragStartX; offsetY=e.clientY-dragStartY; constrainView(); draw(); });
+window.addEventListener('mouseup', ()=>{ isDragging=false; });
 
+canvas.addEventListener('click', e=>{
+  const {x,y}=screenToWorld(e.clientX,e.clientY); const cell=worldToCell(x,y); if(!cell) return;
+  const key=`${cell.row},${cell.col}`;
   if(buyMode){
     if(purchasedPixels[key]) return;
-    const idx = selectedPixels.findIndex(p=>p.row===cell.row && p.col===cell.col);
-    if(idx>-1) selectedPixels.splice(idx,1);
-    else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:""});
-    updateSidebar();
-    draw();
-  } else {
-    if(purchasedPixels[key]) window.open(purchasedPixels[key],'_blank');
-  }
+    if(rectSelectToggle.checked){
+      if(!rectStart){ rectStart={x:cell.col,y:cell.row}; return; }
+      const minX=Math.min(rectStart.x,cell.col), maxX=Math.max(rectStart.x,cell.col);
+      const minY=Math.min(rectStart.y,cell.row), maxY=Math.max(rectStart.y,cell.row);
+      for(let r=minY;r<=maxY;r++){ for(let c=minX;c<=maxX;c++){ const k=`${r},${c}`; if(!purchasedPixels[k] && !selectedPixels.some(p=>p.row===r && p.col===c)) selectedPixels.push({row:r,col:c,image:null,link:""}); } }
+      rectStart=null; updateSidebar(); draw(); return;
+    }
+    const idx=selectedPixels.findIndex(p=>p.row===cell.row && p.col===cell.col);
+    if(idx>-1) selectedPixels.splice(idx,1); else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:""});
+    updateSidebar(); draw();
+  } else { if(purchasedPixels[key]) window.open(purchasedPixels[key],'_blank'); }
 });
-canvas.addEventListener('mousemove',(e)=>{
-  if(!buyMode || isDragging) return;
-  const {x,y}=screenToWorld(e.clientX,e.clientY);
-  const cell=worldToCell(x,y);
-  hoveredCell=cell;
-  draw();
+
+canvas.addEventListener('mousemove', e=>{
+  const {x,y}=screenToWorld(e.clientX,e.clientY); hoveredCell=worldToCell(x,y); draw();
 });
-canvas.addEventListener('mouseleave',()=>{hoveredCell=null; draw();});
 
-// Drag / Pan
-canvas.addEventListener('mousedown',e=>{isDragging=true; dragStartX=e.clientX-offsetX; dragStartY=e.clientY-offsetY;});
-window.addEventListener('mousemove',e=>{if(!isDragging) return; offsetX=e.clientX-dragStartX; offsetY=e.clientY-dragStartY; constrainView(); draw();});
-window.addEventListener('mouseup',()=>{isDragging=false;});
+canvas.addEventListener('mouseleave', ()=>{ hoveredCell=null; draw(); });
 
-// Zoom
-canvas.addEventListener('wheel',e=>{
+// Zoom (mouse wheel)
+canvas.addEventListener('wheel', e=>{
   e.preventDefault();
   const zoomFactor=Math.exp((e.deltaY<0?1:-1)*0.12);
-  const prevScale=scale;
-  let next=prevScale*zoomFactor;
+  const prevScale=scale; let next=prevScale*zoomFactor;
   next=Math.max(minScale,Math.min(maxScale,next));
   if(next===prevScale) return;
-
   const rect=canvas.getBoundingClientRect();
-  const cx=e.clientX-rect.left;
-  const cy=e.clientY-rect.top;
-  const worldX=(cx-offsetX)/prevScale;
-  const worldY=(cy-offsetY)/prevScale;
-
-  scale=next;
-  offsetX=cx-worldX*scale;
-  offsetY=cy-worldY*scale;
+  const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+  const worldX=(cx-offsetX)/prevScale, worldY=(cy-offsetY)/prevScale;
+  scale=next; offsetX=cx-worldX*scale; offsetY=cy-worldY*scale;
   constrainView(); draw();
 },{passive:false});
 
 // Sidebar
 function updateSidebar(){
-  const has = selectedPixels.length>0;
-  gentleMsg.style.display = has ? 'none':'block';
-  sidebar.classList.toggle('open',has);
-
+  sidebar.classList.toggle('open', buyMode && selectedPixels.length>0);
+  messageBar.style.display = selectedPixels.length>0 ? 'none':'block';
   pixelList.innerHTML='';
   selectedPixels.forEach((p,i)=>{
-    const div=document.createElement('div');
-    div.className='pixelSection';
-    div.dataset.index=i;
-    div.innerHTML=`<img src="${p.image||'https://via.placeholder.com/50'}"><div class="pixelMeta">
-      <div>Row:${p.row} Col:${p.col}</div>
+    const div=document.createElement('div'); div.className='pixelSection'; div.dataset.index=i;
+    div.innerHTML=`<img src="${p.image||'https://via.placeholder.com/50'}" alt="">
+      <div class="pixelMeta">
+      <div><strong>Row:</strong>${p.row}&nbsp;<strong>Col:</strong>${p.col}</div>
       <input type="file" class="imageInput" data-index="${i}" accept="image/*">
       <input type="url" class="linkInput" placeholder="Hyperlink" value="${p.link||''}" data-index="${i}">
-    </div>`;
-    div.addEventListener('mouseenter',()=>{hoveredCell={row:p.row,col:p.col}; draw();});
-    div.addEventListener('mouseleave',()=>{hoveredCell=null; draw();});
+      </div>`;
+    div.addEventListener('mouseenter',()=>{ hoveredCell={row:p.row,col:p.col}; draw(); });
+    div.addEventListener('mouseleave',()=>{ hoveredCell=null; draw(); });
     pixelList.appendChild(div);
   });
-  document.querySelectorAll('.linkInput').forEach(inp=>{inp.style.display=singleLinkCheckbox.checked?'none':'block';});
+  document.querySelectorAll('.linkInput').forEach(inp=>{ inp.style.display=singleLinkCheckbox.checked?'none':'block'; });
   totalCostEl.textContent=`Total Cost: ${selectedPixels.length} JOD`;
 }
-
-// File & link changes
-pixelList.addEventListener('change',e=>{
+pixelList.addEventListener('change', e=>{
   const idx=Number(e.target.dataset.index); if(Number.isNaN(idx)) return;
-  if(e.target.classList.contains('imageInput')){
-    const file=e.target.files[0]; if(!file) return;
-    const reader=new FileReader();
-    reader.onload=ev=>{selectedPixels[idx].image=ev.target.result; updateSidebar(); draw();}
-    reader.readAsDataURL(file);
+  if(e.target.classList.contains('imageInput')){ const file=e.target.files[0]; if(!file) return;
+    const reader=new FileReader(); reader.onload=ev=>{ selectedPixels[idx].image=ev.target.result; updateSidebar(); }; reader.readAsDataURL(file);
   }
   if(e.target.classList.contains('linkInput')) selectedPixels[idx].link=e.target.value.trim();
 });
-singleLinkCheckbox.addEventListener('change',()=>{document.querySelectorAll('.linkInput').forEach(inp=>inp.style.display=singleLinkCheckbox.checked?'none':'block');});
-
-// Slice mode
-imageUpload.addEventListener('change',e=>{
-  if(!sliceModeCheckbox.checked) return;
+singleLinkCheckbox.addEventListener('change',()=>{ document.querySelectorAll('.linkInput').forEach(inp=>{ inp.style.display=singleLinkCheckbox.checked?'none':'block'; }); });
+uploadImage.addEventListener('change', e=>{
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=ev=>{
-    const img=new Image();
-    img.src=ev.target.result;
-    img.onload=()=>{
-      const w=img.width,h=img.height,n=selectedPixels.length;
-      selectedPixels.forEach((p,i)=>{
-        const sx=Math.floor((i%n)*(w/n)),sy=0,sWidth=Math.ceil(w/n),sHeight=h;
-        const canvasTmp=document.createElement('canvas');
-        canvasTmp.width=50; canvasTmp.height=50;
-        const ctxTmp=canvasTmp.getContext('2d');
-        ctxTmp.drawImage(img,sx,sy,sWidth,sHeight,0,0,50,50);
-        p.image=canvasTmp.toDataURL();
-      });
-      updateSidebar(); draw();
-    }
-  }
+    if(rectSelectToggle.checked){
+      selectedPixels.forEach(p=>p.image=ev.target.result);
+    } else { const last=selectedPixels[selectedPixels.length-1]; if(last) last.image=ev.target.result; }
+    updateSidebar(); draw();
+  };
   reader.readAsDataURL(file);
 });
-
-// Checkout
-document.getElementById('checkout').addEventListener('click',()=>{
+document.getElementById('checkout').addEventListener('click', ()=>{
   if(selectedPixels.length===0) return;
-  if(singleLinkCheckbox.checked){
-    const link = prompt('Enter hyperlink for all pixels:'); 
-    if(link!==null) selectedPixels.forEach(p=>p.link=link.trim());
-  }
-  console.log('Selected payload:',selectedPixels);
-  alert(`Purchase ${selectedPixels.length} pixels for ${selectedPixels.length} JOD`);
+  if(singleLinkCheckbox.checked){ const link=prompt('Enter hyperlink for ALL selected pixels:'); if(link!==null) selectedPixels.forEach(p=>p.link=link.trim()); }
+  console.log('Selected payload:', selectedPixels);
 });
 
-// Buy button toggle
-buyButton.addEventListener('click',()=>{
-  buyMode=!buyMode;
-  buyButton.textContent=buyMode?'Exit Buy Mode':'Buy Pixels';
-  if(!buyMode){selectedPixels=[]; hoveredCell=null; updateSidebar(); draw();}
-  else updateSidebar();
+buyButton.addEventListener('click', ()=>{
+  buyMode=!buyMode; buyButton.textContent=buyMode?'Exit Buy Mode':'Buy Pixels';
+  messageBar.style.display=buyMode?'block':'none';
+  updateSidebar(); draw();
+});
+
+function constrainView(){ const w=canvas.clientWidth,h=canvas.clientHeight,worldW=cols*scale,worldH=rows*scale;
+  if(worldW<=w) offsetX=(w-worldW)/2; else offsetX=Math.min(0,Math.max(offsetX,w-worldW));
+  if(worldH<=h) offsetY=(h-worldH)/2; else offsetY=Math.min(0,Math.max(offsetY,h-worldH));
+}
+
+// ======== Mobile Touch (drag, pinch zoom, rectangle select) ========
+let lastTouchDist = null, touchMode = null;
+canvas.addEventListener('touchstart', e=>{
+  if(!buyMode) return;
+  if(e.touches.length===1){ touchMode='rect'; const {x,y}=screenToWorld(e.touches[0].clientX,e.touches[0].clientY); rectStart={x,y}; }
+  else if(e.touches.length===2){ touchMode='pinch'; lastTouchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); }
+}, {passive:false});
+canvas.addEventListener('touchmove', e=>{
+  e.preventDefault(); if(!buyMode) return;
+  if(touchMode==='rect' && e.touches.length===1){ const {x,y}=screenToWorld(e.touches[0].clientX,e.touches[0].clientY); hoveredCell=worldToCell(x,y); draw(); }
+  else if(touchMode==='pinch' && e.touches.length===2){
+    const dx=e.touches[0].clientX-e.touches[1].clientX, dy=e.touches[0].clientY-e.touches[1].clientY;
+    const dist=Math.hypot(dx,dy), zoomFactor=dist/lastTouchDist; lastTouchDist=dist;
+    const rect=canvas.getBoundingClientRect(); const cx=(e.touches[0].clientX+e.touches[1].clientX)/2-rect.left; const cy=(e.touches[0].clientY+e.touches[1].clientY)/2-rect.top;
+    const worldX=(cx-offsetX)/scale, worldY=(cy-offsetY)/scale;
+    scale*=zoomFactor; scale=Math.max(minScale,Math.min(maxScale,scale));
+    offsetX=cx-worldX*scale; offsetY=cy-worldY*scale; constrainView(); draw();
+  }
+},{passive:false});
+canvas.addEventListener('touchend', e=>{
+  if(!buyMode) return;
+  if(touchMode==='rect' && rectStart){ const {x,y}=hoveredCell?{x:hoveredCell.col,y:hoveredCell.row}:rectStart;
+    const minX=Math.floor(Math.min(rectStart.x,x)), maxX=Math.floor(Math.max(rectStart.x,x));
+    const minY=Math.floor(Math.min(rectStart.y,y)), maxY=Math.floor(Math.max(rectStart.y,y));
+    for(let r=minY;r<=maxY;r++){ for(let c=minX;c<=maxX;c++){ const key=`${r},${c}`; if(!purchasedPixels[key] && !selectedPixels.some(p=>p.row===r && p.col===c)) selectedPixels.push({row:r,col:c,image:null,link:""}); } }
+    rectStart=null; updateSidebar(); draw();
+  }
+  if(e.touches.length<2) lastTouchDist=null;
+  if(e.touches.length===0) touchMode=null;
 });
 
 resizeCanvas();
 draw();
 </script>
+
 </body>
 </html>
