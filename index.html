@@ -1,204 +1,251 @@
-<!DOCTYPE html>
+<!DOCTYPE html>  
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Million Pixel - Buy Mode</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Million Pixel - View / Buy</title>
 <style>
-:root{
-  --bg:#0f0f10;
-  --panel:#141416;
-  --accent:#0f0;
-  --muted:#7b7b7b;
-  --purchased:#0a8f3a;
-  --selected:#16c516;
-  --hover:#00a3ff;
+body { margin:0; font-family:Arial; background:#111; display:flex; overflow-x:hidden; }
+nav {
+  position: fixed; top:0; left:0; width:100%; background:#222;
+  display:flex; align-items:center; padding:10px 20px; z-index:10;
 }
-body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#eee;overflow:hidden;}
-#canvasContainer{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;}
-canvas{display:block;width:100%;height:100%;cursor:crosshair;background:#0b0b0b;}
-#sidebar{position:fixed;top:0;right:0;width:360px;height:100%;background:var(--panel);border-left:1px solid #222;display:none;flex-direction:column;padding:12px;overflow-y:auto;}
-#sidebar h2{margin:0 0 12px 0;color:var(--accent);}
-.pixelList{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
-.pixelItem{display:flex;gap:6px;align-items:center;border:1px solid #222;padding:6px;border-radius:6px;background:#111;position:relative;}
-.pixelItem img{width:48px;height:48px;object-fit:cover;border-radius:4px;}
-.pixelItem input[type="file"], .pixelItem input[type="text"]{flex:1;padding:4px;background:#0b0b0b;border:1px solid #222;color:#fff;border-radius:4px;}
-button{cursor:pointer;border:none;border-radius:6px;}
-.controlBtn{background:var(--accent);color:#000;padding:8px 12px;margin-top:6px;font-weight:700;}
-.checkboxContainer{display:flex;align-items:center;gap:6px;margin-top:6px;}
-.hiddenInput{display:none;margin-top:4px;}
+nav img { height:30px; margin-right:10px; }
+nav h1 { color:#0f0; font-size:20px; margin-right:auto; }
+nav a, nav button { color:#fff; text-decoration:none; margin-left:15px; font-size:16px; background:none; border:none; cursor:pointer; }
+nav a:hover, nav button:hover { color:#0f0; }
+#container { display:flex; width:100%; margin-top:60px; }
+#canvasContainer { flex:1; display:flex; justify-content:center; overflow:hidden; position:relative; }
+canvas { border:1px solid #222; touch-action:none; }
+#sidebar {
+  width:300px; background:#1a1a1a; padding:15px;
+  border-left:1px solid #222; overflow-y:auto;
+  display:none; color:#fff;
+}
+.pixelSection {
+  display:flex; flex-direction:column;
+  margin-bottom:10px; border:1px solid #222;
+  padding:5px; border-radius:5px;
+}
+.pixelSection img { width:50px; height:50px; object-fit:cover; margin-bottom:5px; }
+.pixelSection span { font-size:13px; margin-bottom:5px; }
+.pixelSection input[type="url"], .pixelSection input[type="file"] { display:block; margin-top:5px; width:100%; }
+.pixelSection:hover { background:#0033ff; cursor:pointer; }
+.removePixel { background:red; color:white; border:none; padding:3px 6px; border-radius:3px; cursor:pointer; margin-top:5px; align-self:flex-end; }
+#totalCost { font-size:18px; margin-top:10px; font-weight:bold; }
+#checkout { margin-top:10px; padding:10px; font-size:16px; font-weight:bold; background:#0f0; border:none; color:#111; cursor:pointer; border-radius:5px; }
+#checkout:hover { background:#0c0; }
+#buyButton { position:fixed; top:70px; right:20px; padding:10px 15px; background:#0f0; color:#111; border:none; cursor:pointer; border-radius:5px; z-index:11; }
+#buyButton:hover { background:#0c0; }
 </style>
 </head>
 <body>
 
-<div id="canvasContainer">
-  <canvas id="pixelCanvas"></canvas>
-</div>
+<nav>
+  <img src="https://via.placeholder.com/30" alt="Logo">
+  <h1>Million Pixel</h1>
+  <a href="about.html">About Us</a>
+  <button id="langBtn">🌐 EN</button>
+</nav>
 
-<div id="sidebar">
-  <h2>Buy Pixels</h2>
+<button id="buyButton">Buy Pixels</button>
 
-  <div class="checkboxContainer">
-    <input type="checkbox" id="sliceImage"> Slice one image
+<div id="container">
+  <div id="canvasContainer">
+    <canvas id="pixelCanvas"></canvas>
   </div>
-  <input type="file" id="sliceImageInput" class="hiddenInput" accept="image/*">
-
-  <div class="checkboxContainer">
-    <input type="checkbox" id="applyImageAll"> Apply same image for all
+  <div id="sidebar">
+    <h2>Selected Pixels</h2>
+    <label><input type="checkbox" id="singleLink"> Use one Website URL for all</label><br>
+    <label><input type="checkbox" id="singleImage"> Use one Image for all</label>
+    <div id="pixelList"></div>
+    <div id="totalCost">Total Cost: 0 JOD</div>
+    <button id="checkout">Checkout</button>
   </div>
-  <input type="file" id="applyImageAllInput" class="hiddenInput" accept="image/*">
-
-  <div class="checkboxContainer">
-    <input type="checkbox" id="singleLink"> Use one hyperlink
-  </div>
-  <input type="text" id="singleLinkInput" class="hiddenInput" placeholder="Paste hyperlink here">
-
-  <button id="clearSelection" class="controlBtn">Clear Selection</button>
-
-  <div id="pixelList" class="pixelList"></div>
 </div>
 
 <script>
 const canvas = document.getElementById('pixelCanvas');
 const ctx = canvas.getContext('2d');
-let COLS = 100, ROWS = 100;
-let scale = 6; 
-let offsetX = 0, offsetY = 0;
-
-let purchasedPixels = {};
-let selectedPixels = [];
-
-// Resize canvas
-function resize(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  draw();
-}
-window.addEventListener('resize',resize);
-resize();
-
-// Draw canvas
-function draw(){
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.setTransform(scale,0,0,scale,offsetX,offsetY);
-
-  // Background
-  ctx.fillStyle = '#0b0b0b';
-  ctx.fillRect(0,0,COLS,ROWS);
-
-  // Purchased pixels
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--purchased');
-  for(const key in purchasedPixels){
-    const [r,c] = key.split(',').map(Number);
-    ctx.fillRect(c,r,1,1);
-  }
-
-  // Selected pixels
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--selected');
-  for(const p of selectedPixels){
-    ctx.fillRect(p.col,p.row,1,1);
-  }
-}
-
-// Convert screen to canvas cell
-function screenToCell(x,y){
-  const cx = (x - offsetX)/scale;
-  const cy = (y - offsetY)/scale;
-  const col = Math.floor(cx), row = Math.floor(cy);
-  if(col<0||row<0||col>=COLS||row>=ROWS) return null;
-  return {row,col};
-}
-
-// Manual click selection
-canvas.addEventListener('click', e=>{
-  const cell = screenToCell(e.clientX,e.clientY);
-  if(!cell) return;
-  const idx = selectedPixels.findIndex(p=>p.row===cell.row && p.col===cell.col);
-  if(idx>-1) selectedPixels.splice(idx,1);
-  else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:''});
-  updateSidebar();
-  draw();
-});
-
-// Sidebar handling
 const sidebar = document.getElementById('sidebar');
-function openSidebar(){ sidebar.style.display='flex'; }
-function closeSidebar(){ sidebar.style.display='none'; }
+const pixelList = document.getElementById('pixelList');
+const totalCostEl = document.getElementById('totalCost');
+const singleLinkCheckbox = document.getElementById('singleLink');
+const singleImageCheckbox = document.getElementById('singleImage');
+const buyButton = document.getElementById('buyButton');
+const langBtn = document.getElementById('langBtn');
 
-// Checkboxes show input
-function setupCheckbox(id,inputId){
-  const cb = document.getElementById(id);
-  const input = document.getElementById(inputId);
-  cb.addEventListener('change',()=>{
-    input.style.display = cb.checked ? 'block' : 'none';
-  });
+// GRID CONFIG
+const cols = 1000, rows = 1000, pixelSize = 5; // 1M pixels
+canvas.width = cols * pixelSize;
+canvas.height = rows * pixelSize;
+
+let purchasedPixels = {}; // { "y,x": "url" }
+let selectedPixels = [];
+let buyMode=false;
+let scale = 1, offsetX = 0, offsetY = 0;
+let isPanning = false, lastX=0, lastY=0;
+
+// DRAW GRID
+function drawPixels(){
+  ctx.setTransform(scale,0,0,scale,offsetX,offsetY);
+  ctx.clearRect(-offsetX/scale, -offsetY/scale, canvas.width/scale, canvas.height/scale);
+
+  for(let y=0;y<rows;y++){
+    for(let x=0;x<cols;x++){
+      const key=`${y},${x}`;
+      if(purchasedPixels[key]) ctx.fillStyle="#0a0";
+      else if(selectedPixels.find(p=>p.row==y && p.col==x)) ctx.fillStyle="#0f0";
+      else ctx.fillStyle="#333";
+      ctx.fillRect(x*pixelSize,y*pixelSize,pixelSize,pixelSize);
+    }
+  }
 }
-setupCheckbox('sliceImage','sliceImageInput');
-setupCheckbox('applyImageAll','applyImageAllInput');
-setupCheckbox('singleLink','singleLinkInput');
+drawPixels();
 
-// Clear selection
-document.getElementById('clearSelection').addEventListener('click',()=>{
-  selectedPixels=[];
-  updateSidebar();
-  draw();
+// CANVAS CLICK
+canvas.addEventListener("click", e=>{
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor(((e.clientX-rect.left)-offsetX)/ (pixelSize*scale));
+  const y = Math.floor(((e.clientY-rect.top)-offsetY)/ (pixelSize*scale));
+  const key = `${y},${x}`;
+  if(x<0||y<0||x>=cols||y>=rows) return;
+
+  if(buyMode){
+    if(purchasedPixels[key]) return;
+    const idx = selectedPixels.findIndex(p=>p.row==y&&p.col==x);
+    if(idx>-1) selectedPixels.splice(idx,1);
+    else selectedPixels.push({row:y,col:x,image:null,link:""});
+    updateSidebar();
+  } else {
+    if(purchasedPixels[key]) window.open(purchasedPixels[key],'_blank');
+  }
+  drawPixels();
 });
 
-// Update sidebar pixel list
+// PAN & ZOOM
+canvas.addEventListener("mousedown", e=>{ isPanning=true; lastX=e.clientX; lastY=e.clientY; });
+canvas.addEventListener("mouseup", ()=>isPanning=false);
+canvas.addEventListener("mousemove", e=>{
+  if(isPanning){ offsetX+=e.clientX-lastX; offsetY+=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; drawPixels(); }
+});
+canvas.addEventListener("wheel", e=>{
+  e.preventDefault();
+  const zoom = e.deltaY<0 ? 1.1 : 0.9;
+  scale *= zoom; scale = Math.min(Math.max(0.2,scale),20);
+  drawPixels();
+});
+
+// TOUCH SUPPORT
+let touchStartDist=0;
+canvas.addEventListener("touchstart", e=>{
+  if(e.touches.length==2){
+    touchStartDist = Math.hypot(
+      e.touches[0].clientX-e.touches[1].clientX,
+      e.touches[0].clientY-e.touches[1].clientY
+    );
+  }
+});
+canvas.addEventListener("touchmove", e=>{
+  e.preventDefault();
+  if(e.touches.length==1){
+    offsetX+=e.touches[0].movementX||0;
+    offsetY+=e.touches[0].movementY||0;
+  } else if(e.touches.length==2){
+    const dist=Math.hypot(
+      e.touches[0].clientX-e.touches[1].clientX,
+      e.touches[0].clientY-e.touches[1].clientY
+    );
+    if(touchStartDist){
+      let zoom=dist/touchStartDist;
+      scale*=zoom; scale=Math.min(Math.max(0.2,scale),20);
+    }
+    touchStartDist=dist;
+  }
+  drawPixels();
+},{passive:false});
+
+// SIDEBAR UPDATE
 function updateSidebar(){
-  openSidebar();
-  const pixelList = document.getElementById('pixelList');
-  pixelList.innerHTML='';
+  if(selectedPixels.length>0) sidebar.style.display="block";
+  else sidebar.style.display="none";
+  pixelList.innerHTML="";
   selectedPixels.forEach((p,i)=>{
-    const div = document.createElement('div');
-    div.className='pixelItem';
+    const div=document.createElement('div');
+    div.className="pixelSection"; div.dataset.index=i;
     div.innerHTML=`
-      <img src="${p.image||'https://via.placeholder.com/48'}">
-      <input type="file" data-index="${i}" accept="image/*">
-      <input type="text" placeholder="Hyperlink" data-index="${i}" value="${p.link||''}">
-      <button data-index="${i}">×</button>
-    `;
+      <img src="${p.image||'https://via.placeholder.com/50'}">
+      <span>Row:${p.row} Col:${p.col}</span>
+      <input type="file" class="imageInput" data-index="${i}" accept="image/*">
+      <input type="url" class="linkInput" placeholder="Website URL" data-index="${i}">
+      <button class="removePixel" data-index="${i}">❌ Remove</button>`;
     pixelList.appendChild(div);
   });
-
-  // Image upload per pixel
-  pixelList.querySelectorAll('input[type="file"]').forEach(input=>{
-    input.addEventListener('change',e=>{
-      const idx = e.target.dataset.index;
-      const file = e.target.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = ev=>{
-        selectedPixels[idx].image = ev.target.result;
-        updateSidebar();
-        draw();
-      };
-      reader.readAsDataURL(file);
-    });
-  });
-
-  // Link input per pixel
-  pixelList.querySelectorAll('input[type="text"]').forEach(input=>{
-    input.addEventListener('input',e=>{
-      const idx = e.target.dataset.index;
-      selectedPixels[idx].link = e.target.value.trim();
-    });
-  });
-
-  // Remove pixel
-  pixelList.querySelectorAll('button').forEach(btn=>{
-    btn.addEventListener('click',e=>{
-      const idx = e.target.dataset.index;
-      selectedPixels.splice(idx,1);
-      updateSidebar();
-      draw();
-    });
-  });
+  totalCostEl.textContent=`Total Cost: ${selectedPixels.length} JOD`;
 }
 
-// For testing, open sidebar immediately
-openSidebar();
+// FILE/URL HANDLING + REMOVE
+pixelList.addEventListener("change", e=>{
+  const idx = e.target.dataset.index;
+  if(e.target.classList.contains("imageInput")){
+    const file = e.target.files[0];
+    const reader=new FileReader();
+    reader.onload=ev=>{ selectedPixels[idx].image=ev.target.result; updateSidebar(); }
+    if(file) reader.readAsDataURL(file);
+  } else if(e.target.classList.contains("linkInput")) selectedPixels[idx].link=e.target.value;
+});
+pixelList.addEventListener("click", e=>{
+  if(e.target.classList.contains("removePixel")){
+    const idx=e.target.dataset.index;
+    selectedPixels.splice(idx,1); updateSidebar(); drawPixels();
+  }
+});
+
+// SINGLE OPTIONS
+singleLinkCheckbox.addEventListener("change",()=>{
+  const inputs=document.querySelectorAll(".linkInput");
+  inputs.forEach(input=>input.style.display=singleLinkCheckbox.checked?"none":"block");
+});
+singleImageCheckbox.addEventListener("change",()=>{
+  const inputs=document.querySelectorAll(".imageInput");
+  inputs.forEach(input=>input.style.display=singleImageCheckbox.checked?"none":"block");
+});
+
+// CHECKOUT
+document.getElementById("checkout").addEventListener("click",()=>{
+  if(singleLinkCheckbox.checked){
+    const link=prompt("Enter one Website URL:");
+    selectedPixels.forEach(p=>p.link=link);
+  }
+  if(singleImageCheckbox.checked){
+    const fileInput=document.createElement("input");
+    fileInput.type="file"; fileInput.accept="image/*";
+    fileInput.onchange=()=>{
+      const file=fileInput.files[0];
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        selectedPixels.forEach(p=>p.image=ev.target.result);
+        updateSidebar();
+      }
+      if(file) reader.readAsDataURL(file);
+    };
+    fileInput.click();
+  }
+  alert(`Purchasing ${selectedPixels.length} pixel(s) for ${selectedPixels.length} JOD`);
+});
+
+// BUY MODE
+buyButton.addEventListener("click",()=>{
+  buyMode=!buyMode;
+  buyButton.textContent=buyMode?"Exit Buy Mode":"Buy Pixels";
+  if(!buyMode){ selectedPixels=[]; updateSidebar(); drawPixels(); }
+});
+
+// LANGUAGE SWITCH (demo EN/AR)
+langBtn.addEventListener("click",()=>{
+  if(langBtn.textContent.includes("EN")){ langBtn.textContent="🌐 AR"; document.querySelector("h1").textContent="مليون بكسل"; }
+  else{ langBtn.textContent="🌐 EN"; document.querySelector("h1").textContent="Million Pixel"; }
+});
 </script>
 </body>
 </html>
