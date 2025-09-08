@@ -14,10 +14,10 @@
   --selected:#16c516;
   --hover:#00a3ff;
 }
-body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#eee;overflow:hidden;}
-#canvasContainer{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;}
-canvas{display:block;width:100%;height:100%;cursor:crosshair;background:#0b0b0b;}
-#sidebar{position:fixed;top:0;right:0;width:360px;height:100%;background:var(--panel);border-left:1px solid #222;display:flex;flex-direction:column;padding:12px;overflow-y:auto;}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#eee;display:flex;justify-content:center;align-items:flex-start;height:100vh;overflow:hidden;}
+#canvasContainer{position:relative;background:#0b0b0b;margin:20px;display:flex;justify-content:center;align-items:center;box-shadow:0 0 12px #000;}
+canvas{background:#0b0b0b;display:block;}
+#sidebar{width:360px;height:calc(100vh - 40px);background:var(--panel);border-left:1px solid #222;display:flex;flex-direction:column;padding:12px;overflow-y:auto;margin-top:20px;}
 #sidebar h2{margin:0 0 12px 0;color:var(--accent);}
 .pixelList{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
 .pixelItem{display:flex;gap:6px;align-items:center;border:1px solid #222;padding:6px;border-radius:6px;background:#111;position:relative;}
@@ -32,7 +32,7 @@ button{cursor:pointer;border:none;border-radius:6px;}
 <body>
 
 <div id="canvasContainer">
-  <canvas id="pixelCanvas"></canvas>
+  <canvas id="pixelCanvas" width="600" height="600"></canvas>
 </div>
 
 <div id="sidebar">
@@ -61,56 +61,60 @@ button{cursor:pointer;border:none;border-radius:6px;}
 <script>
 const canvas = document.getElementById('pixelCanvas');
 const ctx = canvas.getContext('2d');
-let COLS = 100, ROWS = 100;
-let scale = 6; 
-let offsetX = 0, offsetY = 0;
+const COLS = 100, ROWS = 100;
+const canvasSize = 600;
+const pixelSize = canvasSize / COLS;
 
 let purchasedPixels = {};
 let selectedPixels = [];
 
-// Resize canvas
-function resize(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  draw();
-}
-window.addEventListener('resize',resize);
-resize();
-
-// Draw canvas
+// Draw grid and pixels
 function draw(){
-  ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.setTransform(scale,0,0,scale,offsetX,offsetY);
 
-  // Background
-  ctx.fillStyle = '#0b0b0b';
-  ctx.fillRect(0,0,COLS,ROWS);
-
-  // Purchased pixels
+  // Draw purchased pixels
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--purchased');
   for(const key in purchasedPixels){
     const [r,c] = key.split(',').map(Number);
-    ctx.fillRect(c,r,1,1);
+    ctx.fillRect(c*pixelSize,r*pixelSize,pixelSize,pixelSize);
   }
 
-  // Selected pixels
+  // Draw selected pixels
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--selected');
   for(const p of selectedPixels){
-    ctx.fillRect(p.col,p.row,1,1);
+    ctx.fillRect(p.col*pixelSize,p.row*pixelSize,pixelSize,pixelSize);
+  }
+
+  // Draw grid
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 0.5;
+  for(let i=0;i<=COLS;i++){
+    ctx.beginPath();
+    ctx.moveTo(i*pixelSize,0);
+    ctx.lineTo(i*pixelSize,canvasSize);
+    ctx.stroke();
+  }
+  for(let j=0;j<=ROWS;j++){
+    ctx.beginPath();
+    ctx.moveTo(0,j*pixelSize);
+    ctx.lineTo(canvasSize,j*pixelSize);
+    ctx.stroke();
   }
 }
+draw();
 
-// Convert screen to canvas cell
+// Convert mouse to grid cell
 function screenToCell(x,y){
-  const cx = (x - offsetX)/scale;
-  const cy = (y - offsetY)/scale;
-  const col = Math.floor(cx), row = Math.floor(cy);
+  const rect = canvas.getBoundingClientRect();
+  const cx = x - rect.left;
+  const cy = y - rect.top;
+  const col = Math.floor(cx / pixelSize);
+  const row = Math.floor(cy / pixelSize);
   if(col<0||row<0||col>=COLS||row>=ROWS) return null;
   return {row,col};
 }
 
-// Manual click selection
+// Canvas click
 canvas.addEventListener('click', e=>{
   const cell = screenToCell(e.clientX,e.clientY);
   if(!cell) return;
@@ -121,10 +125,7 @@ canvas.addEventListener('click', e=>{
   draw();
 });
 
-// Sidebar handling
-const sidebar = document.getElementById('sidebar');
-
-// Checkboxes show input
+// Sidebar checkboxes show inputs
 function setupCheckbox(id,inputId){
   const cb = document.getElementById(id);
   const input = document.getElementById(inputId);
@@ -193,9 +194,6 @@ function updateSidebar(){
     });
   });
 }
-
-// Open sidebar immediately
-sidebar.style.display='flex';
 </script>
 </body>
 </html>
