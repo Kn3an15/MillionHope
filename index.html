@@ -1,36 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Million Pixel</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Million Hope</title>
 <link rel="stylesheet" href="style.css">
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-<script src="firebase-config.js"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+<script src="firebaseConfig.js"></script>
+
 </head>
 <body>
 
 <nav>
-  <h1>Million Pixel</h1>
+  <img src="assets/logo.png" alt="Million Hope Logo">
+  <h1>Million Hope</h1>
   <a href="about.html">About Us</a>
-  <a href="contact.html">Contact</a>
+  <a href="contact.html">Contact Us</a>
 </nav>
+
+<button id="buyButton">Buy Pixels</button>
 
 <div id="canvasContainer">
   <canvas id="pixelCanvas"></canvas>
 </div>
 
-<button id="buyButton">Buy Pixels</button>
-
 <div id="sidebar">
-  <div id="messageBar">Click "Buy Pixels" to start</div>
+  <div id="messageBar">Press "Buy Pixels" to start selecting</div>
+  <h2>Selected Pixels</h2>
   <div id="pixelList"></div>
+  <div id="optionsForAll" style="display:none">
+    <button id="applyUrlAll">Apply same URL to all</button>
+    <button id="applyImageAll">Apply same Image to all</button>
+  </div>
+  <div id="totalCost">Total Cost: 0 JOD</div>
   <button id="checkout">Checkout</button>
   <button id="clearSelection">Clear Selection</button>
 </div>
 
-<script src="main.js"></script>
+<script type="module" src="main.js"></script>
 </body>
 </html>
