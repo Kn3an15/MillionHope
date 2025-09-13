@@ -1,0 +1,5 @@
+body { margin:0; font-family: Arial, sans-serif; background:#111; }
+canvas { display:block; width:100%; height:100%; touch-action:none; }
+#canvasContainer { position:absolute; top:60px; left:0; right:0; bottom:0; overflow:hidden; }
+#sidebar { position:fixed; top:60px; right:-350px; width:350px; bottom:0; transition: right .3s; background:rgba(0,0,0,0.8); color:#fff; overflow-y:auto; }
+#sidebar.open { right:0; }
