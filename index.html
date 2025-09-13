@@ -66,6 +66,8 @@ label.inline{ display:flex; align-items:center; gap:8px; margin:6px 0 8px; font-
 #messageBar{
   margin-bottom:10px; color:#0f0; font-weight:bold;
 }
+
+  
   <head>
   <style>
     /* your existing styles … */
@@ -168,6 +170,7 @@ let scale=1,offsetX=0,offsetY=0,isDragging=false,dragStartX=0,dragStartY=0;
 let rectStart=null;
 
 // Resize
+
 function resizeCanvas(){
   const dpr=Math.max(1,window.devicePixelRatio||1);
   const w=container.clientWidth,h=container.clientHeight;
@@ -178,7 +181,30 @@ function resizeCanvas(){
   if(scale===1){ scale=fit; offsetX=(w-cols*scale)/2; offsetY=(h-rows*scale)/2; }
   constrainView(); draw();
 }
-window.addEventListener('resize',resizeCanvas);
+
+// Resize (updated for reliable mobile fit)
+function resizeCanvas(){
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const w = container.clientWidth, h = container.clientHeight;
+
+  // set canvas backing store for crisp pixels
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+
+  // keep drawing scaled to DPR; your draw() uses ctx.translate/ctx.scale for world units
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // compute fit every resize so mobile/rotation always reflows correctly
+  const fit = Math.min(w / cols, h / rows);
+  scale = fit; // always refit to container
+  offsetX = (w - cols * scale) / 2;
+  offsetY = (h - rows * scale) / 2;
+
+  constrainView();
+  draw();
+}
 
 function constrainView(){
   const w=canvas.clientWidth,h=canvas.clientHeight;
@@ -356,22 +382,33 @@ document.getElementById('checkout').addEventListener('click', ()=>{
 });
 
 // Buy mode
-buyButton.addEventListener('click', ()=>{
-  if(buyMode){
-    if(!purchaseDone && selectedPixels.length>0){
-      if(!confirm('You have unsaved selections. Cancel them?')) return;
-      selectedPixels=[]; messageBar.textContent='Selections cancelled'; messageBar.style.display='block';
+// Buy mode (fixed for mobile: only toggles on click)
+buyButton.addEventListener('click', ()=> {
+  if (buyMode) {
+    if (!purchaseDone && selectedPixels.length>0) {
+      if (!confirm('You have unsaved selections. Cancel them?')) return;
+      selectedPixels=[]; 
+      messageBar.textContent='Selections cancelled'; 
+      messageBar.style.display='block';
     }
-    buyMode=false; rectStart=null; buyButton.textContent='Buy Pixels'; updateSidebar(); draw();
+    buyMode=false; rectStart=null;
+    buyButton.textContent='Buy Pixels';
+    sidebar.classList.remove('open'); // close sidebar properly
+    updateSidebar(); draw();
   } else {
     buyMode=true; purchaseDone=false;
-    messageBar.textContent='Select pixels to start'; messageBar.style.display='block';
-    buyButton.textContent='Exit Buy Mode'; updateSidebar(); draw();
+    messageBar.textContent='Select pixels to start';
+    messageBar.style.display='block';
+    buyButton.textContent='Exit Buy Mode';
+    sidebar.classList.add('open'); // open sidebar properly
+    updateSidebar(); draw();
   }
 });
+
 
 resizeCanvas(); draw();
 </script>
 </body>
 </html>
+
 
