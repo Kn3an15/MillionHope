@@ -40,10 +40,20 @@ canvas{ display:block; width:100%; height:100%; background:var(--bg); touch-acti
 }
 #sidebar.open{ right:0; }
 @media (max-width:768px){
-  #sidebar{
-    right:0; bottom:0; width:100%; height:250px; border-left:none; border-top:1px solid var(--grid);
+  #sidebar {
+    right: 0;            /* full width */
+    bottom: -250px;      /* hide below screen by default */
+    width: 100%; 
+    height: 250px; 
+    border-left: none; 
+    border-top: 1px solid var(--grid); 
+    transition: bottom 0.25s ease;
+  }
+  #sidebar.open {
+    bottom: 0;           /* slide up when open */
   }
 }
+
 
 .pixelSection{
   display:flex; gap:8px; align-items:flex-start;
@@ -304,6 +314,52 @@ next = Math.max(minScale, Math.min(60, next));
   const worldX=(cx-offsetX)/prevScale,worldY=(cy-offsetY)/prevScale;
   scale=next; offsetX=cx-worldX*scale; offsetY=cy-worldY*scale; constrainView(); draw();
 },{passive:false});
+let lastTouchDist = null;
+
+canvas.addEventListener('touchstart', e => {
+  if(e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastTouchDist = Math.sqrt(dx*dx + dy*dy);
+  }
+});
+
+canvas.addEventListener('touchmove', e => {
+  if(e.touches.length === 2) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    if(lastTouchDist) {
+      const zoomFactor = dist / lastTouchDist;
+      const prevScale = scale;
+      let next = prevScale * zoomFactor;
+
+      const minScale = Math.min(container.clientWidth / cols, container.clientHeight / rows);
+      next = Math.max(minScale, Math.min(60, next));
+
+      // Zoom around center point between two fingers
+      const rect = canvas.getBoundingClientRect();
+      const cx = (e.touches[0].clientX + e.touches[1].clientX)/2 - rect.left;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY)/2 - rect.top;
+      const worldX = (cx - offsetX) / prevScale;
+      const worldY = (cy - offsetY) / prevScale;
+
+      scale = next;
+      offsetX = cx - worldX * scale;
+      offsetY = cy - worldY * scale;
+
+      constrainView();
+      draw();
+    }
+    lastTouchDist = dist;
+  }
+}, {passive:false});
+
+canvas.addEventListener('touchend', e => {
+  if(e.touches.length < 2) lastTouchDist = null;
+});
 
 // Hover
 canvas.addEventListener('mousemove', e=>{
@@ -320,6 +376,31 @@ canvas.addEventListener('click', e=>{
   const idx=selectedPixels.findIndex(p=>p.row===cell.row && p.col===cell.col);
   if(idx>-1) selectedPixels.splice(idx,1);
   else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:""});
+  updateSidebar(); draw();
+});
+canvas.addEventListener('click', e => {
+  if(!buyMode) return;
+
+  let {x,y} = screenToWorld(e.clientX,e.clientY);
+
+  // enlarge selection area by 1px around tap
+  const radius = 1; 
+  const cells = [];
+  for(let r = Math.floor(y-radius); r <= Math.floor(y+radius); r++){
+    for(let c = Math.floor(x-radius); c <= Math.floor(x+radius); c++){
+      if(r>=0 && r<rows && c>=0 && c<cols) cells.push({row:r,col:c});
+    }
+  }
+
+  cells.forEach(cell => {
+    const key = `${cell.row},${cell.col}`;
+    if(!purchasedPixels[key]){
+      const idx = selectedPixels.findIndex(p=>p.row===cell.row && p.col===cell.col);
+      if(idx>-1) selectedPixels.splice(idx,1);
+      else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:""});
+    }
+  });
+
   updateSidebar(); draw();
 });
 
@@ -412,6 +493,7 @@ resizeCanvas(); draw();
 </script>
 </body>
 </html>
+
 
 
 
