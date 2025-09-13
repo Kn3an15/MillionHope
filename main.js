@@ -256,6 +256,55 @@ document.getElementById('checkout').addEventListener('click', async ()=>{
   selectedPixels=[]; updateSidebar(); draw();
   alert('Purchase successful! Receipt saved.');
 });
+// ======== BUY / VISIT MODE TOGGLE ========
+const buyButton = document.getElementById('buyButton');
+
+buyButton.addEventListener('click', () => {
+  buyMode = !buyMode;
+  sidebar.classList.toggle('open', buyMode);
+
+  if (buyMode) {
+    messageBar.textContent = "Buy mode active: select pixels";
+    buyButton.textContent = "Switch to Visit Mode";
+  } else {
+    messageBar.textContent = "Visit mode active: click locked pixels to visit URL";
+    buyButton.textContent = "Switch to Buy Mode";
+    selectedPixels = [];   // optionally clear selection when leaving buy mode
+    updateSidebar();
+    draw();
+  }
+});
+
+// ======== CHECKOUT WITH VERIFICATION ========
+document.getElementById('checkout').addEventListener('click', async () => {
+  if (!buyMode) { alert("Switch to Buy mode first."); return; }
+  if (selectedPixels.length === 0) { alert("Select at least one pixel."); return; }
+
+  // Verify all selected pixels have URL or image
+  for (let p of selectedPixels) {
+    if (!p.link && !p.image) {
+      alert(`Pixel at Row ${p.row} Col ${p.col} is missing URL or image.`);
+      return;
+    }
+  }
+
+  // Proceed to save purchase
+  const receiptId = Date.now();
+  const updates = {};
+  selectedPixels.forEach(p => {
+    const key = `${p.row},${p.col}`;
+    purchasedPixels[key] = { row: p.row, col: p.col, link: p.link, image: p.image };
+    updates[key] = purchasedPixels[key];
+  });
+
+  await update(ref(db, 'pixels/'), updates);
+  await set(ref(db, `receipts/${receiptId}`), { pixels: selectedPixels, total: selectedPixels.length, date: new Date().toISOString() });
+
+  selectedPixels = [];
+  updateSidebar();
+  draw();
+  alert('Purchase successful! Receipt saved.');
+});
 
 // ======== HOVER HIGHLIGHT ========
 canvas.addEventListener('mousemove', e=>{
