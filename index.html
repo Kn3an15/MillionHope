@@ -40,19 +40,18 @@ canvas{ display:block; width:100%; height:100%; background:var(--bg); touch-acti
 }
 #sidebar.open{ right:0; }
 @media (max-width:768px){
-  #sidebar {
-    right: 0;            /* full width */
-    bottom: -250px;      /* hide below screen by default */
-    width: 100%; 
-    height: 250px; 
-    border-left: none; 
-    border-top: 1px solid var(--grid); 
-    transition: bottom 0.25s ease;
+  #sidebar{
+    right:0; bottom:-100%; width:100%; height:250px;
+    border-top:1px solid var(--grid);
+    transition:right .25s ease, bottom .4s ease;
+    display: none; /* hide completely */
   }
-  #sidebar.open {
-    bottom: 0;           /* slide up when open */
+  #sidebar.open{
+    bottom:0;
+    display: block; /* show only in buy mode */
   }
 }
+
 
 
 .pixelSection{
@@ -396,13 +395,16 @@ canvas.addEventListener('click', e => {
   let {x,y} = screenToWorld(e.clientX,e.clientY);
 
   // enlarge selection area by 1px around tap
-  const radius = 1; 
-  const cells = [];
-  for(let r = Math.floor(y-radius); r <= Math.floor(y+radius); r++){
-    for(let c = Math.floor(x-radius); c <= Math.floor(x+radius); c++){
-      if(r>=0 && r<rows && c>=0 && c<cols) cells.push({row:r,col:c});
+const cell = worldToCell(x, y);
+if(cell){
+    const key = `${cell.row},${cell.col}`;
+    if(!purchasedPixels[key]){
+        const idx = selectedPixels.findIndex(p => p.row === cell.row && p.col === cell.col);
+        if(idx > -1) selectedPixels.splice(idx,1);
+        else selectedPixels.push({row:cell.row,col:cell.col,image:null,link:""});
     }
-  }
+}
+
 
   cells.forEach(cell => {
     const key = `${cell.row},${cell.col}`;
@@ -505,6 +507,7 @@ resizeCanvas(); draw();
 </script>
 </body>
 </html>
+
 
 
 
