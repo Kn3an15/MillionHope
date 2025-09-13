@@ -291,9 +291,21 @@ window.addEventListener('mouseup', e=>{
     if(cell){
       const rx=Math.min(rectStart.x,cell.col), ry=Math.min(rectStart.y,cell.row);
       const rw=Math.abs(cell.col-rectStart.x)+1, rh=Math.abs(cell.row-rectStart.y)+1;
-      for(let r=ry;r<ry+rh;r++) for(let c=rx;c<rx+rw;c++){
-        const key=`${r},${c}`; if(!purchasedPixels[key]) selectedPixels.push({row:r,col:c,image:null,link:""});
-      }
+      for(let r = ry; r < ry + rh; r++){
+  for(let c = rx; c < rx + rw; c++){
+    const key = `${r},${c}`;
+
+    // skip if already purchased
+    if(purchasedPixels[key]) continue;
+
+    // skip if already selected
+    const exists = selectedPixels.some(p => p.row === r && p.col === c);
+    if(exists) continue;
+
+    // add new selection
+    selectedPixels.push({row: r, col: c, image: null, link: ""});
+  }
+}
       updateSidebar(); draw();
     }
     rectStart=null;
@@ -493,6 +505,7 @@ resizeCanvas(); draw();
 </script>
 </body>
 </html>
+
 
 
 
