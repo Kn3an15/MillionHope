@@ -190,6 +190,35 @@ function resizeCanvas(){
   if(scale===1){ scale=fit; offsetX=(w-cols*scale)/2; offsetY=(h-rows*scale)/2; }
   constrainView(); draw();
 }
+// Touch drag
+let lastTouchPos = null;
+
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) { // only one finger → drag
+    const touch = e.touches[0];
+    lastTouchPos = {x: touch.clientX, y: touch.clientY};
+  }
+});
+
+canvas.addEventListener('touchmove', e => {
+  if (e.touches.length === 1 && lastTouchPos) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const dx = touch.clientX - lastTouchPos.x;
+    const dy = touch.clientY - lastTouchPos.y;
+
+    offsetX += dx;
+    offsetY += dy;
+    constrainView();
+    draw();
+
+    lastTouchPos = {x: touch.clientX, y: touch.clientY};
+  }
+}, {passive:false});
+
+canvas.addEventListener('touchend', e => {
+  if (e.touches.length === 0) lastTouchPos = null;
+});
 
 // Resize (updated for reliable mobile fit)
 function resizeCanvas(){
@@ -507,6 +536,7 @@ resizeCanvas(); draw();
 </script>
 </body>
 </html>
+
 
 
 
