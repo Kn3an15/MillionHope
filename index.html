@@ -178,30 +178,78 @@ let purchaseDone=false;
 let scale=1,offsetX=0,offsetY=0,isDragging=false,dragStartX=0,dragStartY=0;
 let rectStart=null;
 
-// Resize
+// Mouse zoom (wheel)
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const zoomFactor = Math.exp((e.deltaY < 0 ? 1 : -1) * 0.12);
+  const prevScale = scale;
+  let next = prevScale * zoomFactor;
 
-function resizeCanvas(){
-  const dpr=Math.max(1,window.devicePixelRatio||1);
-  const w=container.clientWidth,h=container.clientHeight;
-  canvas.width=Math.floor(w*dpr); canvas.height=Math.floor(h*dpr);
-  canvas.style.width=w+'px'; canvas.style.height=h+'px';
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  const fit=Math.min(w/cols,h/rows);
-  if(scale===1){ scale=fit; offsetX=(w-cols*scale)/2; offsetY=(h-rows*scale)/2; }
-  constrainView(); draw();
-}
-// Touch drag
-let lastTouchPos = null;
+  // minimum scale to fit canvas
+  const minScale = Math.min(container.clientWidth / cols, container.clientHeight / rows);
+  next = Math.max(minScale, Math.min(60, next));
+
+  // zoom around mouse pointer
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+  const worldX = (cx - offsetX) / prevScale;
+  const worldY = (cy - offsetY) / prevScale;
+
+  scale = next;
+  offsetX = cx - worldX * scale;
+  offsetY = cy - worldY * scale;
+
+  constrainView();
+  draw();
+}, { passive: false });
+
+// Touch zoom (pinch)
+let lastTouchDist = null;
 
 canvas.addEventListener('touchstart', e => {
-  if (e.touches.length === 1) { // only one finger → drag
-    const touch = e.touches[0];
-    lastTouchPos = {x: touch.clientX, y: touch.clientY};
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastTouchDist = Math.sqrt(dx*dx + dy*dy);
+  } else if (e.touches.length === 1) {
+    lastTouchPos = {x: e.touches[0].clientX, y: e.touches[0].clientY};
   }
 });
 
 canvas.addEventListener('touchmove', e => {
-  if (e.touches.length === 1 && lastTouchPos) {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    if (lastTouchDist) {
+      const zoomFactor = dist / lastTouchDist;
+      const prevScale = scale;
+      let next = prevScale * zoomFactor;
+
+      const minScale = Math.min(container.clientWidth / cols, container.clientHeight / rows);
+      next = Math.max(minScale, Math.min(60, next));
+
+      // zoom around midpoint between two fingers
+      const rect = canvas.getBoundingClientRect();
+      const cx = (e.touches[0].clientX + e.touches[1].clientX)/2 - rect.left;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY)/2 - rect.top;
+      const worldX = (cx - offsetX) / prevScale;
+      const worldY = (cy - offsetY) / prevScale;
+
+      scale = next;
+      offsetX = cx - worldX * scale;
+      offsetY = cy - worldY * scale;
+
+      constrainView();
+      draw();
+    }
+
+    lastTouchDist = dist;
+  } else if (e.touches.length === 1 && lastTouchPos) {
+    // single finger drag (pan)
     e.preventDefault();
     const touch = e.touches[0];
     const dx = touch.clientX - lastTouchPos.x;
@@ -214,16 +262,12 @@ canvas.addEventListener('touchmove', e => {
 
     lastTouchPos = {x: touch.clientX, y: touch.clientY};
   }
-}, {passive:false});
+}, { passive: false });
 
 canvas.addEventListener('touchend', e => {
+  if (e.touches.length < 2) lastTouchDist = null;
   if (e.touches.length === 0) lastTouchPos = null;
 });
-
-// Resize (updated for reliable mobile fit)
-function resizeCanvas(){
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  const w = container.clientWidth, h = container.clientHeight;
 
   // set canvas backing store for crisp pixels
   canvas.width = Math.floor(w * dpr);
@@ -536,6 +580,7 @@ resizeCanvas(); draw();
 </script>
 </body>
 </html>
+
 
 
 
